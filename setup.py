@@ -3,6 +3,9 @@ import setuptools
 with open("README.md") as f:
     long_desc = f.read()
 
+with open("requirements.txt") as f:
+    req_list = f.readlines()
+
 setuptools.setup(name="habitat_sim2real_wgw101",
                  version="0.0.1",
                  author="Guillaume Bono",
@@ -12,7 +15,9 @@ setuptools.setup(name="habitat_sim2real_wgw101",
                  long_description_content_type="text/markdown",
                  url="https://github.com/wgw101/habitat_sim2real",
                  packages=setuptools.find_packages("./src"),
-                 classifiers=["Programming Language :: Python :: 3",
+                 classifiers=["Development Status :: 3 - Alpha",
+                              "Programming Language :: Python :: 3",
                               "License :: OSI Approved :: MIT License",
                               "Operating System :: OS Independent"],
-                 python_requires=">=3.6")
+                 python_requires=">=3.6",
+                 install_requires=req_list)
