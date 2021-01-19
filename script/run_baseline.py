@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 
+import os
+os.environ["GLOG_minloglevel"] = "2"
+
 import argparse
 
-import envs.ros_env
-import sims.ros.rosrobot_sim
+import habitat_sim2real.envs.ros_env
+import habitat_sim2real.sims.ros.rosrobot_sim
 
 from habitat_baselines.common.baseline_registry import baseline_registry
 from habitat_baselines.config.default import get_config
 
 
-CONFIG_PATH = "configs/locobot_citi_ppo.yaml"
+CFG_PATH = "configs/locobot_citi_ppo.yaml"
 
 
 def parse_args():
@@ -25,13 +28,13 @@ def parse_args():
 def main(args):
     cfg = get_config(args.config_path, args.extra_cfg)
 
-    trainer_cls = baseline_registry.get_trainer(config.TRAINER_NAME)
-    trainer = trainer_cls(config)
+    trainer_cls = baseline_registry.get_trainer(cfg.TRAINER_NAME)
+    trainer = trainer_cls(cfg)
 
     if args.run_type == "train":
         trainer.train()
     elif args.run_type == "eval":
-        train.eval()
+        trainer.eval()
 
 
 if __name__ == "__main__":

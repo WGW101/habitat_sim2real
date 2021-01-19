@@ -1,7 +1,7 @@
 from habitat.core.env import Env
 from habitat.tasks.nav.nav import NavigationGoal, NavigationEpisode
 from habitat_baselines.common.environments import NavRLEnv
-from habitat_baselines.common.registry import baseline_registry
+from habitat_baselines.common.baseline_registry import baseline_registry
 
 
 class ROSEnv(Env):

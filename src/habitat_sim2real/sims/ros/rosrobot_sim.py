@@ -7,7 +7,7 @@ import habitat
 from habitat.core.simulator import Simulator, RGBSensor, DepthSensor, SensorSuite
 from gym import spaces
 
-from sims.ros.intf_node import HabitatInterfaceROSNode
+from habitat_sim2real.sims.ros.intf_node import HabitatInterfaceROSNode
 
 
 class ROSDepthSensor(DepthSensor):
