@@ -9,7 +9,7 @@ from habitat_baselines.common.baseline_registry import baseline_registry
 from habitat_baselines.config.default import get_config
 
 
-CONFIG_PATH = "config/locobot_citi_ppo.yaml"
+CONFIG_PATH = "configs/locobot_citi_ppo.yaml"
 
 
 def parse_args():

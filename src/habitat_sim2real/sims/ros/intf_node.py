@@ -42,9 +42,13 @@ class HabitatInterfaceROSNode:
 
         self.move_base_client = actionlib.SimpleActionClient(cfg.MOVE_BASE_ACTION_SERVER,
                                                              MoveBaseAction)
-        self.move_base_client.wait_for_server()
+        if not self.move_base_client.wait_for_server(cfg.CONNECTION_TIMEOUT):
+            raise RuntimeError("Unable to connect to move_base action server.")
 
-        rospy.wait_for_service(cfg.DYNAMIXEL_SERVICE)
+        try:
+            rospy.wait_for_service(cfg.DYNAMIXEL_SERVICE, cfg.CONNECTION_TIMEOUT)
+        except rospy.ROSException:
+            raise RuntimeError("Unable to connect to dynamixel service.")
         self.dynamixel_cmd_proxy = rospy.ServiceProxy(cfg.DYNAMIXEL_SERVICE, DynamixelCommand)
         self.dynamixel_sub = rospy.Subscriber(cfg.DYNAMIXEL_STATE_TOPIC,
                                               DynamixelStateList,
@@ -53,7 +57,10 @@ class HabitatInterfaceROSNode:
         self.tilt_target_event = threading.Event()
         self.tilt_reached_event = threading.Event()
 
-        rospy.wait_for_service(cfg.MOVE_BASE_PLAN_SERVICE)
+        try:
+            rospy.wait_for_service(cfg.MOVE_BASE_PLAN_SERVICE, cfg.CONENCTION_TIMEOUT)
+        except rospy.ROSException:
+            raise RuntimeError("Unable to connect to get_plan service.")
         self.get_plan_proxy = rospy.ServiceProxy(cfg.MOVE_BASE_PLAN_SERVICE, GetPlan)
 
     def on_img(self, color_img_msg, depth_img_msg):
