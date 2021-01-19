@@ -74,20 +74,27 @@ class ROSRobot(Simulator):
         elif action == 1: # MOVE_FORWARD
             self.intf_node.move_to_relative(self.config.FORWARD_STEP_SIZE, 0, 0)
         elif action == 2: # TURN_LEFT
-            self.intf_node.move_to_relative(0, 0, math.rad(self.config.TURN_ANGLE))
+            self.intf_node.move_to_relative(0, 0, math.radians(self.config.TURN_ANGLE))
         elif action == 3: # TURN_RIGHT
-            self.intf_node.move_to_relative(0, 0, -math.rad(self.config.TURN_ANGLE))
+            self.intf_node.move_to_relative(0, 0, -math.radians(self.config.TURN_ANGLE))
         elif action == 4: # LOOK_UP
             self.cur_camera_tilt -= self.config.TILT_ANGLE
             self.cur_camera_tilt = max(-45, min(self.cur_camera_tilt, 45))
-            self.intf_node.set_camera_tilt(math.rad(self.cur_camera_tilt))
+            self.intf_node.set_camera_tilt(math.radians(self.cur_camera_tilt))
         elif action == 5: # LOOK_DOWN
             self.cur_camera_tilt += self.config.TILT_ANGLE
             self.cur_camera_tilt = max(-45, min(self.cur_camera_tilt, 45))
-            self.intf_node.set_camera_tilt(math.rad(self.cur_camera_tilt))
+            self.intf_node.set_camera_tilt(math.radians(self.cur_camera_tilt))
 
         raw_images = self.intf_node.get_raw_images()
         return self._sensor_suite.get_observations(raw_images)
+
+    def get_observations_at(self, position=None, rotation=None, keep_agent_at_new_pose=False):
+        if position is None and rotation is None and not keep_agent_at_new_pose:
+            raw_images = self.intf_node.get_raw_images()
+            return self._sensor_suite.get_observations(raw_images)
+        else:
+            raise RuntimeError("Can only query observations for current pose on a real robot.")
 
     def get_agent_state(self, agent_id=0):
         p, q = self.intf_node.get_robot_pose()
@@ -99,8 +106,11 @@ class ROSRobot(Simulator):
             all_pos = [pos_a] + pos_b
         except TypeError:
             all_pos = [pos_a, pos_b]
-        return sum(self.intf_node.get_distance((-az, -ax, ay), (-bz, -bx, by))
-                   for (ax, ay, az), (bx, by, bz) in zip(all_pos, all_pos[1:]))
+        try:
+            return sum(self.intf_node.get_distance((-az, -ax, ay), (-bz, -bx, by))
+                       for (ax, ay, az), (bx, by, bz) in zip(all_pos, all_pos[1:]))
+        except TypeError: # One of the pos is unreachable
+            return None
 
     def sample_navigable_point(self):
         grid, cell_size, origin_pos, origin_rot = self.intf_node.get_map()
