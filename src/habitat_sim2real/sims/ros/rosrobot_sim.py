@@ -11,34 +11,27 @@ from habitat_sim2real.sims.ros.intf_node import HabitatInterfaceROSNode
 
 
 class ROSDepthSensor(DepthSensor):
-    def __init__(self, cfg):
-        self.cfg = cfg
-        self._obs_space = spaces.Box(low=0 if self.cfg.NORMALIZE_DEPTH else self.cfg.MIN_DEPTH,
-                                     high=1 if self.cfg.NORMALIZE_DEPTH else self.cfg.MAX_DEPTH,
-                                     shape=(self.cfg.HEIGHT, self.cfg.WIDTH, 1),
-                                     dtype=np.float32)
-
-    def _get_observation_space(self):
-        return self._obs_space
+    def _get_observation_space(self, *args, **kwargs):
+        return spaces.Box(low=0 if self.config.NORMALIZE_DEPTH else self.config.MIN_DEPTH,
+                          high=1 if self.config.NORMALIZE_DEPTH else self.config.MAX_DEPTH,
+                          shape=(self.config.HEIGHT, self.config.WIDTH, 1),
+                          dtype=numpy.float32)
 
     def get_observation(self, sim_obs):
         out = sim_obs[1].astype(numpy.float32) / 1000
-        out = numpy.clip(raw, self.cfg.MIN_DEPTH, self.cfg.MAX_DEPTH)
-        if self.cfg.NORMALIZE_DEPTH:
-            out = (out - self.cfg.MIN_DEPTH) / (self.cfg.MAX_DEPTH - self.cfg.MIN_DEPTH)
+        out = numpy.clip(out, self.config.MIN_DEPTH, self.config.MAX_DEPTH)
+        if self.config.NORMALIZE_DEPTH:
+            out = (out - self.config.MIN_DEPTH) \
+                  / (self.config.MAX_DEPTH - self.config.MIN_DEPTH)
         return out[:, :, numpy.newaxis]
 
 
 class ROSRGBSensor(RGBSensor):
-    def __init__(self, cfg):
-        self.cfg = cfg
-        self._obs_space = spaces.Box(low=0,
-                                     high=255,
-                                     shape=(self.cfg.HEIGHT, self.cfg.WIDTH, 3),
-                                     dtype=np.uint8)
-
-    def _get_observation_space(self):
-        return self._obs_space
+    def _get_observation_space(self, *args, **kwargs):
+        return spaces.Box(low=0,
+                          high=255,
+                          shape=(self.config.HEIGHT, self.config.WIDTH, 3),
+                          dtype=numpy.uint8)
 
     def get_observation(self, sim_obs):
         return sim_obs[0]
@@ -52,13 +45,13 @@ class AgentState:
 
 @habitat.registry.register_simulator(name="ROS-Robot-v0")
 class ROSRobot(Simulator):
-    def __init__(self, cfg):
-        self.cfg = cfg
-        self.intf_node = HabitatInterfaceROSNode(cfg.ROS)
+    def __init__(self, config):
+        self.config = config
+        self.intf_node = HabitatInterfaceROSNode(self.config.ROS)
         self.cur_camera_tilt = 0
-        self._sensor_suite = SensorSuite([ROSRGBSensor(cfg),
-                                          ROSDepthSensor(cfg)])
-        if cfg.ACTION_SPACE_CONFIG == "v0":
+        self._sensor_suite = SensorSuite([ROSRGBSensor(config=self.config.RGB_SENSOR),
+                                          ROSDepthSensor(config=self.config.DEPTH_SENSOR)])
+        if self.config.ACTION_SPACE_CONFIG == "v0":
             self._action_space = spaces.Discrete(4)
         else: # v1 or pyrobotnoisy
             self._action_space = spaces.Discrete(6)
@@ -79,17 +72,17 @@ class ROSRobot(Simulator):
         if action == 0: # STOP
             pass
         elif action == 1: # MOVE_FORWARD
-            self.intf_node.move_to_relative(self.cfg.FORWARD_STEP_SIZE, 0, 0)
+            self.intf_node.move_to_relative(self.config.FORWARD_STEP_SIZE, 0, 0)
         elif action == 2: # TURN_LEFT
-            self.intf_node.move_to_relative(0, 0, math.rad(self.cfg.TURN_ANGLE))
+            self.intf_node.move_to_relative(0, 0, math.rad(self.config.TURN_ANGLE))
         elif action == 3: # TURN_RIGHT
-            self.intf_node.move_to_relative(0, 0, -math.rad(self.cfg.TURN_ANGLE))
+            self.intf_node.move_to_relative(0, 0, -math.rad(self.config.TURN_ANGLE))
         elif action == 4: # LOOK_UP
-            self.cur_camera_tilt -= self.cfg.TILT_ANGLE
+            self.cur_camera_tilt -= self.config.TILT_ANGLE
             self.cur_camera_tilt = max(-45, min(self.cur_camera_tilt, 45))
             self.intf_node.set_camera_tilt(math.rad(self.cur_camera_tilt))
         elif action == 5: # LOOK_DOWN
-            self.cur_camera_tilt += self.cfg.TILT_ANGLE
+            self.cur_camera_tilt += self.config.TILT_ANGLE
             self.cur_camera_tilt = max(-45, min(self.cur_camera_tilt, 45))
             self.intf_node.set_camera_tilt(math.rad(self.cur_camera_tilt))
 
@@ -101,8 +94,13 @@ class ROSRobot(Simulator):
         return AgentState(numpy.array([-p[1], p[2], -p[0]]), quaternion.quaternion(*q))
 
     def geodesic_distance(self, pos_a, pos_b, episode=None):
-        return self.intf_node.get_distance((-pos_a[2], -pos_a[0], pos_a[1]),
-                                           (-pos_b[2], -pos_b[0], pos_b[1]))
+        try:
+            iter(pos_b[0])
+            all_pos = [pos_a] + pos_b
+        except TypeError:
+            all_pos = [pos_a, pos_b]
+        return sum(self.intf_node.get_distance((-az, -ax, ay), (-bz, -bx, by))
+                   for (ax, ay, az), (bx, by, bz) in zip(all_pos, all_pos[1:]))
 
     def sample_navigable_point(self):
         grid, cell_size, origin_pos, origin_rot = self.intf_node.get_map()

@@ -20,15 +20,18 @@ DEFAULT_ROS_CFG.DYNAMIXEL_TIMEOUT = 5.0
 DEFAULT_ROS_CFG.CONNECTION_TIMEOUT = 5.0
 
 
-def get_config(cfg_path, extra_cfg=None):
-    cfg = habitat.get_config(cfg_path, extra_cfg)
+def merge_ros_config(cfg, ros_cfg=DEFAULT_ROS_CFG):
     cfg.defrost()
     if hasattr(cfg.SIMULATOR, "ROS"):
-        default = DEFAULT_ROS_CFG.clone()
+        default = ros_cfg.clone()
         default.update(cfg.SIMULATOR.ROS)
         cfg.SIMULATOR.ROS = default
     else:
-        cfg.SIMULATOR.ROS = DEFAULT_ROS_CFG.clone()
+        cfg.SIMULATOR.ROS = ros_cfg.clone()
     cfg.freeze()
     return cfg
 
+
+def get_config(cfg_path, extra_cfg=None):
+    cfg = habitat.get_config(cfg_path, extra_cfg)
+    return merge_ros_config(cfg)

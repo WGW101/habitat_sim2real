@@ -23,6 +23,10 @@ class HabitatInterfaceROSNode:
         self.cfg = cfg
         timeout = rospy.Duration(cfg.CONNECTION_TIMEOUT)
 
+        try:
+            rospy.get_published_topics() # Raises ConnectionRefusedError if master is offline
+        except ConnectionRefusedError:
+            raise RuntimeError("Unable to connect to ROS master.")
         rospy.init_node(cfg.NODE_NAME)
 
         self.color_sub = message_filters.Subscriber(cfg.COLOR_IMAGE_TOPIC, Image)
@@ -33,10 +37,12 @@ class HabitatInterfaceROSNode:
         self.bridge = cv_bridge.CvBridge()
         self.raw_images_buffer = None
         self.img_buffer_lock = threading.Lock()
+        self.has_first_images = threading.Event()
 
         self.map_sub = rospy.Subscriber(cfg.MAP_TOPIC, OccupancyGrid, self.on_map)
         self.map_buffer = None
         self.map_buffer_lock = threading.Lock()
+        self.has_first_map = threading.Event()
 
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listerner = tf2_ros.TransformListener(self.tf_buffer)
@@ -72,13 +78,15 @@ class HabitatInterfaceROSNode:
             return
         with self.img_buffer_lock:
             self.raw_images_buffer = (raw_color, raw_depth)
+        self.has_first_images.set()
 
     def get_raw_images(self):
+        self.has_first_images.wait()
         with self.img_buffer_lock:
             return self.raw_images_buffer
 
     def on_map(self, occ_grid_msg):
-        grid = numpy.array(occ_grid_msg.data).reshape(occ_grid_msg.info.height, 
+        grid = numpy.array(occ_grid_msg.data).reshape(occ_grid_msg.info.height,
                                                       occ_grid_msg.info.width)
         cell_size = occ_grid_msg.info.resolution
         origin_pos = (occ_grid_msg.info.origin.position.x,
@@ -90,8 +98,10 @@ class HabitatInterfaceROSNode:
                       occ_grid_msg.info.origin.orientation.w)
         with self.map_buffer_lock:
             self.map_buffer = (grid, cell_size, origin_pos, origin_rot)
+        self.has_first_map.set()
 
     def get_map(self):
+        self.has_first_map.wait()
         with self.map_buffer_lock:
             return self.map_buffer
 

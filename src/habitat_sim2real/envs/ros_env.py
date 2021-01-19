@@ -1,11 +1,15 @@
 from habitat.core.env import Env
 from habitat.tasks.nav.nav import NavigationGoal, NavigationEpisode
+
 from habitat_baselines.common.environments import NavRLEnv
 from habitat_baselines.common.baseline_registry import baseline_registry
+
+from habitat_sim2real.sims.ros.default_cfg import merge_ros_config
 
 
 class ROSEnv(Env):
     def __init__(self, config, dataset=None):
+        config = merge_ros_config(config)
         super().__init__(config, None)
         self.episode_count = 0
 
