@@ -3,7 +3,7 @@
 import habitat
 import cv2
 
-cfg = habitat.get_config("./config/locobot_citi_pointnav.yaml")
+cfg = habitat.get_config("configs/locobot_citi_pointnav.yaml")
 sim_cls = habitat.registry.get_simulator(cfg.SIMULATOR.TYPE)
 sim = sim_cls(cfg.SIMULATOR)
 

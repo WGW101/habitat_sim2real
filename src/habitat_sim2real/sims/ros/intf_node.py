@@ -21,6 +21,7 @@ from dynamixel_workbench_msgs.srv import DynamixelCommand
 class HabitatInterfaceROSNode:
     def __init__(self, cfg):
         self.cfg = cfg
+        timeout = rospy.Duration(cfg.CONNECTION_TIMEOUT)
 
         rospy.init_node(cfg.NODE_NAME)
 
@@ -42,11 +43,11 @@ class HabitatInterfaceROSNode:
 
         self.move_base_client = actionlib.SimpleActionClient(cfg.MOVE_BASE_ACTION_SERVER,
                                                              MoveBaseAction)
-        if not self.move_base_client.wait_for_server(cfg.CONNECTION_TIMEOUT):
+        if not self.move_base_client.wait_for_server(timeout):
             raise RuntimeError("Unable to connect to move_base action server.")
 
         try:
-            rospy.wait_for_service(cfg.DYNAMIXEL_SERVICE, cfg.CONNECTION_TIMEOUT)
+            rospy.wait_for_service(cfg.DYNAMIXEL_SERVICE, timeout)
         except rospy.ROSException:
             raise RuntimeError("Unable to connect to dynamixel service.")
         self.dynamixel_cmd_proxy = rospy.ServiceProxy(cfg.DYNAMIXEL_SERVICE, DynamixelCommand)
@@ -58,7 +59,7 @@ class HabitatInterfaceROSNode:
         self.tilt_reached_event = threading.Event()
 
         try:
-            rospy.wait_for_service(cfg.MOVE_BASE_PLAN_SERVICE, cfg.CONENCTION_TIMEOUT)
+            rospy.wait_for_service(cfg.MOVE_BASE_PLAN_SERVICE, timeout)
         except rospy.ROSException:
             raise RuntimeError("Unable to connect to get_plan service.")
         self.get_plan_proxy = rospy.ServiceProxy(cfg.MOVE_BASE_PLAN_SERVICE, GetPlan)

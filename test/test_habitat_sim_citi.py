@@ -5,7 +5,7 @@ import cv2
 import numpy
 
 sim_cfg = habitat_sim.SimulatorConfiguration()
-sim_cfg.scene.id = "./data/citi/4d6ab9cc04f24c87aed802698f957b7a.glb"
+sim_cfg.scene.id = "data/citi/4d6ab9cc04f24c87aed802698f957b7a.glb"
 sim_cfg.allow_sliding = False
 
 ag_cfg = habitat_sim.agent.AgentConfiguration()
