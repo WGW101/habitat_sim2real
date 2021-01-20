@@ -13,8 +13,8 @@ SIMULATOR:
     WIDTH: 640
     HEIGHT: 480
     HFOV: 90
-    MIN_DEPTH: 0.155 # docs give ~0.11; WARN: not clipped, invalid -> 0
-    MAX_DEPTH: 10.0 # docs; again may not be clipped
+    MIN_DEPTH: 0.155
+    MAX_DEPTH: 10.0
     NORMALIZE: true
     POSITION: [0.000, 0.589, 0.047]
   AGENT_0:
@@ -23,7 +23,7 @@ SIMULATOR:
     RADIUS: 0.18
   ACTION_SPACE_CONFIG: "v1"
 DATASET:
-  DATA_PATH: "data/datasets/pointnav/citi/v0/{split}/{split}.json.gz"
+  DATA_PATH: "data/datasets/pointnav/citi_simple/v0/{split}/{split}.json.gz"
   SCENES_DIR: "data/scene_datasets/"
   SPLIT: "train"
   TYPE: "PointNav-v1"

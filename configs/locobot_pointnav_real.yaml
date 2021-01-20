@@ -14,8 +14,8 @@ SIMULATOR:
     WIDTH: 640
     HEIGHT: 480
     HFOV: 90
-    MIN_DEPTH: 0.155 # realsense docs give ~0.11; not clipped, invalid -> 0
-    MAX_DEPTH: 10.0  # realsense docs; may not be clipped but unreliably measure up to ~65m
+    MIN_DEPTH: 0.155
+    MAX_DEPTH: 10.0
     NORMALIZE: true
     POSITION: [0.000, 0.589, 0.047]
   AGENT_0:

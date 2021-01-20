@@ -14,7 +14,7 @@ import habitat
 from habitat.tasks.nav.nav import NavigationGoal, NavigationEpisode
 
 
-CFG_PATH = "configs/locobot_citi_simple_pointnav.yaml"
+CFG_PATH = "configs/locobot_pointnav_citi_sim_simple.yaml"
 N_EPISODES = 300
 DIFFICULTIES = ("very easy", "easy", "medium", "hard")
 DIFFICULTY_BOUNDS = (1.0, 3.0, 7.0, 13.0, 20.0)

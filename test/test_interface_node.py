@@ -8,7 +8,7 @@ import cv2
 import time
 
 
-cfg = get_config("configs/locobot_citi_pointnav.yaml")
+cfg = get_config("configs/locobot_pointnav_real.yaml")
 node = HabitatInterfaceROSNode(cfg.SIMULATOR.ROS)
 time.sleep(3)
 print("Node initialized!")

@@ -8,7 +8,7 @@ import habitat
 from habitat_baselines.common.baseline_registry import baseline_registry
 from habitat_baselines.config.default import get_config
 
-cfg = get_config("configs/locobot_citi_ppo_real.yaml")
+cfg = get_config("configs/locobot_ppo_real.yaml")
 print(cfg.ENV_NAME)
 print(cfg.TASK_CONFIG.SIMULATOR.TYPE)
 
