@@ -7,7 +7,7 @@ import habitat
 from habitat.core.simulator import Simulator, RGBSensor, DepthSensor, SensorSuite
 from gym import spaces
 
-from habitat_sim2real.sims.ros.intf_node import HabitatInterfaceROSNode
+from .intf_node import HabitatInterfaceROSNode
 
 
 class ROSDepthSensor(DepthSensor):
@@ -18,7 +18,7 @@ class ROSDepthSensor(DepthSensor):
                           dtype=numpy.float32)
 
     def get_observation(self, sim_obs):
-        out = sim_obs[1].astype(numpy.float32) / 1000
+        out = sim_obs[1].astype(numpy.float32) * 0.001
         out = numpy.clip(out, self.config.MIN_DEPTH, self.config.MAX_DEPTH)
         if self.config.NORMALIZE_DEPTH:
             out = (out - self.config.MIN_DEPTH) \
