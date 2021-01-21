@@ -20,22 +20,18 @@ SIMULATOR:
     SENSORS: ["RGB_SENSOR", "DEPTH_SENSOR"]
     HEIGHT: 0.65
     RADIUS: 0.18
+DATASET:
+  TYPE: PointNav-v1
+  SPLIT: train
+  DATA_PATH: "data/datasets/pointnav/gibson/v2/{split}/{split}.json.gz"
 TASK:
   TYPE: Nav-v0
   SUCCESS_DISTANCE: 0.2
-
   SENSORS: ['POINTGOAL_WITH_GPS_COMPASS_SENSOR']
   POINTGOAL_WITH_GPS_COMPASS_SENSOR:
     GOAL_FORMAT: "POLAR"
     DIMENSIONALITY: 2
   GOAL_SENSOR_UUID: pointgoal_with_gps_compass
-
   MEASUREMENTS: ['DISTANCE_TO_GOAL', 'SUCCESS', 'SPL']
   SUCCESS:
     SUCCESS_DISTANCE: 0.2
-
-DATASET:
-  TYPE: PointNav-v1
-  SPLIT: train
-  DATA_PATH: "data/datasets/pointnav/gibson/v1/{split}/{split}.json.gz"
-
