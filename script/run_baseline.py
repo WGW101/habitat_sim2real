@@ -5,8 +5,7 @@ os.environ["GLOG_minloglevel"] = "2"
 
 import argparse
 
-import habitat_sim2real.envs.ros_env
-import habitat_sim2real.sims.ros.rosrobot_sim
+import habitat_sim2real
 
 from habitat_baselines.common.baseline_registry import baseline_registry
 from habitat_baselines.config.default import get_config
