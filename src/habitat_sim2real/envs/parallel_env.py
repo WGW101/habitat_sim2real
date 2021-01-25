@@ -1,8 +1,5 @@
 from habitat import VectorEnv
-from habitat_baseline.common.baseline_registry import baseline_registry
-
-
-from itertools import cycle
+from habitat_baselines.common.baseline_registry import baseline_registry
 
 
 def make_env(cfg):
@@ -32,3 +29,10 @@ def make_parallel_envs(cfg):
         configs.append(proc_cfg)
 
     return VectorEnv(make_env, configs)
+
+
+# Current implem in habitat_baselines:
+# -> requires #scenes >= #processes
+# -> requires #processes >= #minibatch
+# -> round-robin assignment scene->process
+# -> minibatch sampling: ???
