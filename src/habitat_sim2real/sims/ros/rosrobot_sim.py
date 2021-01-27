@@ -65,6 +65,7 @@ class ROSRobot(Simulator):
         return self._action_space
 
     def reset(self):
+        self.intf_node.set_camera_tilt(0)
         raw_images = self.intf_node.get_raw_images()
         return self._sensor_suite.get_observations(raw_images)
 
