@@ -39,8 +39,8 @@ class ROSRGBSensor(RGBSensor):
 
 class AgentState:
     def __init__(self, p, q):
-        self.position = p
-        self.rotation = q
+        self.position = numpy.array([-p[1], p[2], -p[0]])
+        self.rotation = quaternion.quaternion(q[3], -q[1], q[2], -q[0])
 
 
 @habitat.registry.register_simulator(name="ROS-Robot-v0")
@@ -98,7 +98,7 @@ class ROSRobot(Simulator):
 
     def get_agent_state(self, agent_id=0):
         p, q = self.intf_node.get_robot_pose()
-        return AgentState(numpy.array([-p[1], p[2], -p[0]]), quaternion.quaternion(*q))
+        return AgentState(p, q)
 
     def geodesic_distance(self, pos_a, pos_b, episode=None):
         try:

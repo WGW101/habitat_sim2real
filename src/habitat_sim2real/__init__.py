@@ -1,4 +1,4 @@
-from .sims.pyrobot.pyrobot_discrete_action import PyRobotDiscreteActions
+# from .sims.pyrobot.pyrobot_discrete_action import PyRobotDiscreteActions
 
 from .sims.ros.rosrobot_sim import ROSRobot
 from .sims.ros.intf_node import HabitatInterfaceROSNode
