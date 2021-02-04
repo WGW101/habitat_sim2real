@@ -19,3 +19,11 @@ except ImportError as e:
 from .sims.ros.default_cfg import merge_ros_config, get_config
 
 from .envs.ros_env import ROSEnv, ROSNavRLEnv
+
+
+try:
+    from .sims.jetbot.hetbot_sim import Jetbot
+except ImportError as e:
+    class Jetbot:
+        def __init__(*args, **kwargs):
+            raise e

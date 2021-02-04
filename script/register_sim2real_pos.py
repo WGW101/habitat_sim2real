@@ -33,8 +33,8 @@ img_paths.insert(0, real_origin)
 
 cfg = habitat.get_config(CFG_PATH)
 cfg.defrost()
-cfg.SIMULATOR.FORWARD_STEP_SIZE = 0.1
-cfg.SIMULATOR.TURN_ANGLE = 2
+cfg.SIMULATOR.FORWARD_STEP_SIZE = 0.05
+cfg.SIMULATOR.TURN_ANGLE = 1
 cfg.SIMULATOR.TILT_ANGLE = 1
 cfg.freeze()
 sim = habitat.sims.make_sim(cfg.SIMULATOR.TYPE, config=cfg.SIMULATOR)
