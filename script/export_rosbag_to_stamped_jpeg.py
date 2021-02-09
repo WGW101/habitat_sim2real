@@ -78,7 +78,7 @@ class ROSBagExporter:
     def save_worker(self):
         while True:
             filename, image = self.save_queue.get()
-            print("Saving", filename)
+            print("Saving '{}' (queue_size: {})".format(filename, queue.qsize()))
             cv2.imwrite(filename, image)
             self.save_queue.task_done()
 

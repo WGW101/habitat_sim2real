@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-from habitat_sim2real.sims.ros.intf_node   import HabitatInterfaceROSNode
-from habitat_sim2real.sims.ros.default_cfg import get_config
+from habitat_sim2real import HabitatInterfaceROSNode
+from habitat_sim2real import get_config
 
 import numpy
 import cv2
