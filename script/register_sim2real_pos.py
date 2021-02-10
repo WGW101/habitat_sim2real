@@ -69,18 +69,16 @@ def draw_grid(img):
     disp = img.copy()
     H, W, _ = img.shape
 
+    for i in range(1, 12, 2):
+        cv2.line(disp, (i * W // 12, 0), (i * W // 12, H), (0, 255, 0))
+        cv2.line(disp, (0, i * H // 12), (W, i * H // 12), (0, 255, 0))
+
+    for i in (1, 2, 4, 5):
+        cv2.line(disp, (i * W // 6, 0), (i * W // 6, H), (255, 0, 0))
+        cv2.line(disp, (0, i * H // 6), (W, i * H // 6), (255, 0, 0))
+
     cv2.line(disp, (W // 2, 0), (W // 2, H), (0, 0, 255))
     cv2.line(disp, (0, H // 2), (W, H // 2), (0, 0, 255))
-
-    cv2.line(disp, (W // 3, 0), (W // 3, H), (0, 255, 0))
-    cv2.line(disp, (2 * W // 3, 0), (2 * W // 3, H), (0, 255, 0))
-    cv2.line(disp, (0, H // 3), (W, H // 3), (0, 255, 0))
-    cv2.line(disp, (0, 2 * H // 3), (W, 2 * H // 3), (0, 255, 0))
-
-    cv2.line(disp, (W // 6, 0), (W // 6, H), (255, 0, 0))
-    cv2.line(disp, (5 * W // 6, 0), (5 * W // 6, H), (255, 0, 0))
-    cv2.line(disp, (0, H // 6), (W, H // 6), (255, 0, 0))
-    cv2.line(disp, (0, 5 * H // 6), (W, 5 * H // 6), (255, 0, 0))
 
     return disp
 
