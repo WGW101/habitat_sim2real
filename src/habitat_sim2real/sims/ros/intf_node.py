@@ -70,6 +70,9 @@ class HabitatInterfaceROSNode:
             raise RuntimeError("Unable to connect to get_plan service.")
         self.get_plan_proxy = rospy.ServiceProxy(cfg.MOVE_BASE_PLAN_SERVICE, GetPlan)
 
+        self.episode_goal_pub = rospy.Publisher("habitat_episode_goal", PoseStamped,
+                                                queue_size=1)
+
     def on_img(self, color_img_msg, depth_img_msg):
         try:
             raw_color = self.bridge.imgmsg_to_cv2(color_img_msg, "passthrough")
@@ -193,4 +196,13 @@ class HabitatInterfaceROSNode:
         goal.target_pose.pose.orientation.w = q[3]
         self.move_base_client.send_goal(goal)
         return self.move_base_client.wait_for_result()
+
+    def publish_episode_goal(self, x, y, z):
+        pose = PoseStamped()
+        pose.header.stamp = rospy.Time.now()
+        pose.header.frame_id = self.cfg.TF_REF_FRAME
+        pose.pose.position.x = x
+        pose.pose.position.y = y
+        pose.pose.position.z = z
+        self.episode_goal_pub.publish(pose)
 

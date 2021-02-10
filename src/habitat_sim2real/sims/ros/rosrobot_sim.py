@@ -124,3 +124,13 @@ class ROSRobot(Simulator):
     def seed(self, seed):
         random.seed(seed)
 
+    @property
+    def up_vector(self):
+        return np.array([0.0, 1.0, 0.0])
+
+    @property
+    def forward_vector(self):
+        return np.array([0.0, 0.0, -1.0])
+
+    def publish_episode_goal(self, goal_pos):
+        self.intf_node.publish_episode_goal(-goal_pos.z, -goal_pos.x, goal_pos.y)
