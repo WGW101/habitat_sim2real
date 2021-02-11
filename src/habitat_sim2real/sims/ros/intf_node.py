@@ -16,6 +16,7 @@ from nav_msgs.srv import GetPlan
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from dynamixel_workbench_msgs.msg import DynamixelStateList
 from dynamixel_workbench_msgs.srv import DynamixelCommand
+from kobuki_msgs.msg import BumperEvent
 
 
 class HabitatInterfaceROSNode:
@@ -72,6 +73,10 @@ class HabitatInterfaceROSNode:
 
         self.episode_goal_pub = rospy.Publisher("habitat_episode_goal", PoseStamped,
                                                 queue_size=1)
+
+        self.bump_sub = rospy.Subscriber(cfg.BUMPER_TOPIC, BumperEvent, self.on_bump)
+        self.collided_lock = theading.Lock()
+        self.collided = False
 
     def on_img(self, color_img_msg, depth_img_msg):
         try:
@@ -205,3 +210,22 @@ class HabitatInterfaceROSNode:
         pose.pose.position.z = z
         self.episode_goal_pub.publish(pose)
 
+    def on_bump(self, bump_msg):
+        if bump_msg.status = BumperEvent.PRESSED:
+            self.move_base_client.cancel()
+#            if bump_msg.bumper = BumperEvent.LEFT:
+#                pass
+#            elif bump_msg.bumper = BumperEvent.CENTER:
+#                pass
+#            elif bump_msg.bumper = BumperEvent.RIGHT:
+#                pass
+            with self.collided_lock:
+                self.collided = True
+
+    def has_collided(self):
+        with self.collided_lock:
+            return self.collided
+
+    def clear_collided(self):
+        with self.collided_lock:
+            self.collided = False

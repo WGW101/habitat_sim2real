@@ -34,6 +34,10 @@ class ROSEnv(Env):
         self._task.measurements.reset_measures(episode=self._current_episode, task=self._task)
         return observations
 
+    def _update_step_stats(self):
+        super()._update_step_stats()
+        self._episode_over = self._episode_over or self._sim.intf_node.has_collided()
+
 
 @baseline_registry.register_env(name="ROSNavRLEnv")
 class ROSNavRLEnv(NavRLEnv):
