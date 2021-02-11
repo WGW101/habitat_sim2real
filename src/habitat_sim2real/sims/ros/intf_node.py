@@ -102,7 +102,7 @@ class HabitatInterfaceROSNode:
                       occ_grid_msg.info.origin.position.z)
         origin_rot = (occ_grid_msg.info.origin.orientation.x,
                       occ_grid_msg.info.origin.orientation.y,
-                      occ_grid_msg.info.origin.orientation.y,
+                      occ_grid_msg.info.origin.orientation.z,
                       occ_grid_msg.info.origin.orientation.w)
         with self.map_buffer_lock:
             self.map_buffer = (grid, cell_size, origin_pos, origin_rot)
@@ -201,13 +201,13 @@ class HabitatInterfaceROSNode:
         self.move_base_client.send_goal(goal)
         return self.move_base_client.wait_for_result()
 
-    def publish_episode_goal(self, x, y, z):
+    def publish_episode_goal(self, x, y):
         pose = PoseStamped()
         pose.header.stamp = rospy.Time.now()
         pose.header.frame_id = self.cfg.TF_REF_FRAME
         pose.pose.position.x = x
         pose.pose.position.y = y
-        pose.pose.position.z = z
+        pose.pose.position.z = 0
         self.episode_goal_pub.publish(pose)
 
     def on_bump(self, bump_msg):

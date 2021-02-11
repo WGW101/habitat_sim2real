@@ -115,12 +115,18 @@ class ROSRobot(Simulator):
             return None
 
     def sample_navigable_point(self):
+        cur_pos, _ = self.intf_node.get_robot_pose()
         grid, cell_size, origin_pos, origin_rot = self.intf_node.get_map()
         free_pts = list(zip(*numpy.nonzero((0 <= grid) & (grid <= 20))))
-        pt = random.choice(free_pts)
-        return (-origin_pos[1] - cell_size * pt[0],
-                origin_pos[2],
-                -origin_pos[0] - cell_size * pt[1])
+        invalid = True
+        while invalid:
+            y, x = random.choice(free_pts)
+            cand = (origin_pos[0] + cell_size * x,
+                    origin_pos[1] + cell_size * y,
+                    origin_pos[2])
+            # Can ROS find a plan to that point?
+            invalid = (self.intf_node.get_distance(cur_pos, cand) is None)
+        return (-cand[1], cand[2], -cand[0])
 
     def seed(self, seed):
         random.seed(seed)
@@ -134,4 +140,4 @@ class ROSRobot(Simulator):
         return np.array([0.0, 0.0, -1.0])
 
     def publish_episode_goal(self, goal_pos):
-        self.intf_node.publish_episode_goal(-goal_pos[2], -goal_pos[0], goal_pos[1])
+        self.intf_node.publish_episode_goal(-goal_pos[2], -goal_pos[0])
