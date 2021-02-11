@@ -164,7 +164,6 @@ class HabitatInterfaceROSNode:
             self.tilt_target_event.set()
             if self.tilt_reached_event.wait(timeout=self.cfg.DYNAMIXEL_TIMEOUT):
                 self.tilt_target_event.clear()
-                self.tilt_target_value = None
                 return True
         return False
 

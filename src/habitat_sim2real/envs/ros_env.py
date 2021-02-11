@@ -28,7 +28,7 @@ class ROSEnv(Env):
                                                   start_position=state.position.tolist(),
                                                   start_rotation=state.rotation.tolist(),
                                                   goals=[goal])
-        self._sim.publish_episode_goal(goal)
+        self._sim.publish_episode_goal(goal.position)
 
         observations = self._task.reset(episode=self._current_episode)
         self._task.measurements.reset_measures(episode=self._current_episode, task=self._task)

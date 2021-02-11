@@ -133,4 +133,4 @@ class ROSRobot(Simulator):
         return np.array([0.0, 0.0, -1.0])
 
     def publish_episode_goal(self, goal_pos):
-        self.intf_node.publish_episode_goal(-goal_pos.z, -goal_pos.x, goal_pos.y)
+        self.intf_node.publish_episode_goal(-goal_pos[2], -goal_pos[0], goal_pos[1])
