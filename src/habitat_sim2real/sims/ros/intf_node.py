@@ -75,7 +75,7 @@ class HabitatInterfaceROSNode:
                                                 queue_size=1)
 
         self.bump_sub = rospy.Subscriber(cfg.BUMPER_TOPIC, BumperEvent, self.on_bump)
-        self.collided_lock = theading.Lock()
+        self.collided_lock = threading.Lock()
         self.collided = False
 
     def on_img(self, color_img_msg, depth_img_msg):
@@ -211,13 +211,13 @@ class HabitatInterfaceROSNode:
         self.episode_goal_pub.publish(pose)
 
     def on_bump(self, bump_msg):
-        if bump_msg.status = BumperEvent.PRESSED:
-            self.move_base_client.cancel()
-#            if bump_msg.bumper = BumperEvent.LEFT:
+        if bump_msg.state == BumperEvent.PRESSED:
+            self.move_base_client.cancel_goal()
+#            if bump_msg.bumper == BumperEvent.LEFT:
 #                pass
-#            elif bump_msg.bumper = BumperEvent.CENTER:
+#            elif bump_msg.bumper == BumperEvent.CENTER:
 #                pass
-#            elif bump_msg.bumper = BumperEvent.RIGHT:
+#            elif bump_msg.bumper == BumperEvent.RIGHT:
 #                pass
             with self.collided_lock:
                 self.collided = True
