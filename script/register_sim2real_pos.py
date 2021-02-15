@@ -2,6 +2,8 @@
 
 import os
 os.environ["GLOG_minloglevel"] = "2"
+os.environ["MAGNUM_LOG"] = "quiet"
+
 import glob
 import random
 import argparse
