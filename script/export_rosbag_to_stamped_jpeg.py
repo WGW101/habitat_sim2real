@@ -11,6 +11,9 @@ import tf2_ros
 import tf_conversions
 import numpy
 
+MIN_DEPTH = 0.155
+MAX_DEPTH = 10.0
+
 
 class ROSBagExporter:
     def __init__(self):
@@ -41,9 +44,8 @@ class ROSBagExporter:
             str_pose = "x{:.3f}_y{:.3f}_z{:.3f}_r{:.0f}".format(*pose)
             self.save_queue.put(("out/real/" + str_pose + "_rgb.jpeg", raw_color[:, :, ::-1]))
             depth = raw_depth.astype(numpy.float32) / 1000
-            depth = numpy.clip(depth, 0.155, 10)
-            depth -= depth.min()
-            depth /= depth.max()
+            depth = numpy.clip(depth, MIN_DEPTH, MAX_DEPTH)
+            depth = (depth - MIN_DEPTH) / (MAX_DEPTH - MIN_DEPTH)
             converted = (depth * 255).astype(numpy.uint8)
             self.save_queue.put(("out/real/" + str_pose + "_depth.jpeg", converted))
             self.prv_pose = pose

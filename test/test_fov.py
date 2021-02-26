@@ -3,11 +3,12 @@ import os
 os.environ["GLOG_minloglevel"] = "2"
 os.environ["MAGNUM_LOG"] = "quiet"
 
+import logging
 import cv2
 import numpy
 import quaternion
 import habitat
-
+habitat.logger.setLevel(logging.ERROR)
 
 HFOVS = (60, 70)
 RATIOS = (1 / 1, 4 / 3,)
