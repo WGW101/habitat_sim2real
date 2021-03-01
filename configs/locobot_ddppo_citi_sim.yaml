@@ -4,13 +4,13 @@ ENV_NAME: "NavRLEnv"
 SIMULATOR_GPU_ID: 0
 TORCH_GPU_ID: 0
 VIDEO_OPTION: []
-TENSORBOARD_DIR: "tb"
-VIDEO_DIR: "video_dir"
+TENSORBOARD_DIR: "out/ddppo/tb"
+VIDEO_DIR: "out/ddppo/video_dir"
 TEST_EPISODE_COUNT: -1
-EVAL_CKPT_PATH_DIR: "data/checkpoints"
+EVAL_CKPT_PATH_DIR: "out/ddppo/checkpoints"
 NUM_PROCESSES: 1
 SENSORS: ["DEPTH_SENSOR"]
-CHECKPOINT_FOLDER: "data/checkpoints"
+CHECKPOINT_FOLDER: "out/ddppo/checkpoints"
 NUM_UPDATES: 10000
 LOG_INTERVAL: 10
 CHECKPOINT_INTERVAL: 250
@@ -39,7 +39,7 @@ RL:
   DDPPO:
     sync_frac: 0.6
     distrib_backend: GLOO
-    pretrained_weights: data/ddppo-models/gibson-2plus-resnet50.pth
+    pretrained_weights: out/ddppo/models/gibson-2plus-resnet50.pth
     pretrained: False
     pretrained_encoder: False
     train_encoder: True
