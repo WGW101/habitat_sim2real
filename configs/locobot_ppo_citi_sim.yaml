@@ -1,4 +1,4 @@
-BASE_TASK_CONFIG_PATH: "configs/locobot_pointnav_citi_sim_simple.yaml"
+BASE_TASK_CONFIG_PATH: "configs/locobot_pointnav_citi_sim.yaml"
 TRAINER_NAME: "ppo"
 ENV_NAME: "NavRLEnv"
 SIMULATOR_GPU_ID: 0

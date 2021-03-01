@@ -24,7 +24,7 @@ SIMULATOR:
     RADIUS: 0.18
   ACTION_SPACE_CONFIG: "v1"
 DATASET:
-  DATA_PATH: "data/datasets/pointnav/citi_simple/v0/{split}/{split}.json.gz"
+  DATA_PATH: "data/datasets/pointnav/citi/v1/{split}/{split}.json.gz"
   SCENES_DIR: "data/scene_datasets/"
   SPLIT: "train"
   TYPE: "PointNav-v1"

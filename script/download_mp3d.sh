@@ -1,4 +1,4 @@
-python3 script/download_mp3d_scenes.py --task "habitat" -o "data/scene_datasets/mp3d"
+python3 script/download_mp3d_scenes.py --task_data "habitat" -o "data/scene_datasets/mp3d"
 
 curl "https://dl.fbaipublicfiles.com/habitat/data/datasets/pointnav/mp3d/v1/pointnav_mp3d_v1.zip" -o "pointnav_mp3d_v1.zip" \
 	&& unzip "pointnav_mp3d_v1.zip" -d "data/datasets/pointnav/mp3d/v1"
