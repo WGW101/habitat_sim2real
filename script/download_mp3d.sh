@@ -1,5 +1,5 @@
 curl "http://kaldir.vc.in.tum.de/matterport/v1/tasks/mp3d_habitat.zip" -o "mp3d_habitat.zip" \
-	&& unzip "mp3d_habitat.zip" -d "data/scene_datasets/mp3d/"
+	&& unzip "mp3d_habitat.zip" -d "data/scene_datasets/"
 
 curl "https://dl.fbaipublicfiles.com/habitat/data/datasets/pointnav/mp3d/v1/pointnav_mp3d_v1.zip" -o "pointnav_mp3d_v1.zip" \
 	&& unzip "pointnav_mp3d_v1.zip" -d "data/datasets/pointnav/mp3d/v1"
