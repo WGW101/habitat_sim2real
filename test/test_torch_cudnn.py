@@ -1,6 +1,5 @@
 import torch
 import sys
-import logging
 
 has_cuda = torch.cuda.is_available()
 if not has_cuda:

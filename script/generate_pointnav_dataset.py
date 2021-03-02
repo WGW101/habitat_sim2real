@@ -5,6 +5,7 @@ os.environ["GLOG_minloglevel"] = "2"
 os.environ["MAGNUM_LOG"] = "quiet"
 
 import argparse
+import logging
 import random
 import gzip
 import tqdm
@@ -12,6 +13,7 @@ import math
 from scipy.spatial.distance import pdist as pairwise_distance
 
 import habitat
+habitat.logger.setLevel(logging.ERROR)
 from habitat.tasks.nav.nav import NavigationGoal, NavigationEpisode
 
 
@@ -81,7 +83,7 @@ def main(args):
     n_pts = 2 * args.n_episodes
     nav_pts = [sample_point(sim) for _ in range(n_pts)]
 
-    pairs = [(i, j) for i in range(n_pts - 1) for j in range(i, n_pts)]
+    pairs = [(i, j) for i in range(n_pts - 1) for j in range(i + 1, n_pts)]
     euc_dists = pairwise_distance(nav_pts)
 
     tot_cnt = 0
