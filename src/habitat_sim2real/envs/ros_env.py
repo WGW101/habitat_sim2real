@@ -26,7 +26,10 @@ class ROSEnv(Env):
         self._current_episode = NavigationEpisode(episode_id=str(self.episode_count),
                                                   scene_id="REAL",
                                                   start_position=state.position.tolist(),
-                                                  start_rotation=state.rotation.tolist(),
+                                                  start_rotation=[state.rotation.x,
+                                                                  state.rotation.y,
+                                                                  state.rotation.z,
+                                                                  state.rotation.w],
                                                   goals=[goal])
         self._sim.publish_episode_goal(goal.position)
 
