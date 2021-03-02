@@ -18,7 +18,7 @@ from habitat.tasks.nav.nav import NavigationGoal, NavigationEpisode
 
 
 CFG_PATH = "configs/locobot_pointnav_citi_sim.yaml"
-N_EPISODES = 300
+N_EPISODES = 4000 # for training, test 300, val 1000
 DIFFICULTIES = ("very easy", "easy", "medium", "hard")
 DIFFICULTY_BOUNDS = (1.0, 3.0, 7.0, 13.0, 20.0)
 DIFFICULTY_RATIOS = "50, 15, 20, 15"
@@ -62,10 +62,10 @@ def make_episode(ep_id, scene_id, src, dst, success_dist, difficulty, geo_dist):
     a = 2 * math.pi * random.random()
     q = [0, math.sin(a / 2), 0, math.cos(a / 2)]
     goal = NavigationGoal(position=dst, radius=success_dist)
-    episode = NavigationEpisode(episode_id=ep_id, scene_id=scene_id,
-                                start_position=src, start_rotation=q, goals=[goal],
-                                info={"difficulty": difficulty,
-                                      "geodesic_distance": geo_dist})
+    return NavigationEpisode(episode_id=ep_id, scene_id=scene_id,
+                             start_position=src, start_rotation=q, goals=[goal],
+                             info={"difficulty": difficulty,
+                                   "geodesic_distance": geo_dist})
 
 
 def main(args):

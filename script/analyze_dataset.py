@@ -12,7 +12,7 @@ import habitat
 from habitat.datasets.utils import get_action_shortest_path
 
 
-CFG_PATH = "configs/locobot_pointnav_citi_sim_simple.yaml"
+CFG_PATH = "configs/locobot_pointnav_citi_sim.yaml"
 MAX_EPISODE_STEPS = 500
 
 
