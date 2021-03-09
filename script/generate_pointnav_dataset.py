@@ -24,6 +24,7 @@ DIFFICULTY_BOUNDS = (1.0, 3.0, 7.0, 13.0, 20.0)
 DIFFICULTY_RATIOS = "50, 15, 20, 15"
 MIN_DIST_RATIO = 1.1
 MIN_ISLAND_RADIUS = 1.5
+EPS = 1e-5
 
 
 def parse_args():
@@ -51,9 +52,9 @@ def parse_difficulty_ratios(args):
                                           DIFFICULTY_BOUNDS[:-1], DIFFICULTY_BOUNDS[1:])}
 
 
-def sample_point(sim, radius=MIN_ISLAND_RADIUS):
+def sample_point(sim, height=None, radius=MIN_ISLAND_RADIUS):
     pt = sim.sample_navigable_point()
-    while sim.island_radius(pt) < radius:
+    while sim.island_radius(pt) < radius and height is not None and abs(pt[1] - height) > EPS:
         pt = sim.sample_navigable_point()
     return pt
 
@@ -76,12 +77,13 @@ def main(args):
     difficulties = parse_difficulty_ratios(args)
 
     sim = habitat.sims.make_sim(cfg.SIMULATOR.TYPE, config=cfg.SIMULATOR)
+    height = sim.get_agent_state().position[1]
     print("Using seed: {}".format(args.seed))
     sim.seed(args.seed)
     dataset = habitat.datasets.make_dataset(cfg.DATASET.TYPE)
 
     n_pts = 2 * args.n_episodes
-    nav_pts = [sample_point(sim) for _ in range(n_pts)]
+    nav_pts = [sample_point(sim, height) for _ in range(n_pts)]
 
     pairs = [(i, j) for i in range(n_pts - 1) for j in range(i + 1, n_pts)]
     euc_dists = pairwise_distance(nav_pts)
