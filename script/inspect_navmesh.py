@@ -27,9 +27,9 @@ def draw_agent(disp, pos, vec, color):
 class NavmeshInspector:
     def __init__(self, cfg_path, scene_path, win_name="Inspector", scale=None):
         print("Reading config...", end=' ', flush=True)
-        self.cfg = habitat.get_config(CFG_PATH).SIMULATOR
+        self.cfg = habitat.get_config(cfg_path).SIMULATOR
         self.cfg.defrost()
-        self.cfg.SCENE = SCENE_PATH
+        self.cfg.SCENE = scene_path
         self.cfg.freeze()
         print("Done!")
 
@@ -39,6 +39,8 @@ class NavmeshInspector:
         self.obs = self.sim.reset()
         self.navmesh_settings = NavMeshSettings()
         self.navmesh_settings.set_defaults()
+        self.navmesh_settings.agent_radius = self.cfg.AGENT_0.RADIUS
+        self.navmesh_settings.agent_height = self.cfg.AGENT_0.HEIGHT
         print("Done!")
 
         self.win_name = win_name
@@ -63,6 +65,8 @@ class NavmeshInspector:
         self.drag_start = None
         self.drag_vec = None
 
+        self.running = True
+
     def on_mouse(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
             self.drag_start = np.array([x, y]).astype(np.int64)
@@ -77,14 +81,17 @@ class NavmeshInspector:
             self.drag_vec = None
 
     def on_key_press(self, key_code):
+        update = True
         if key_code == ord('s'):
-            return True
+            self.running = False
         elif key_code == ord('w'):
             self.obs = self.sim.step(1)
         elif key_code == ord('a'):
             self.obs = self.sim.step(2)
         elif key_code == ord('d'):
             self.obs = self.sim.step(3)
+        elif key_code == ord('r'):
+            self.obs = self.sim.reset()
         elif key_code == ord('u'):
             self.update_navmesh("agent_max_climb", +0.02)
         elif key_code == ord('j'):
@@ -93,7 +100,11 @@ class NavmeshInspector:
             self.update_navmesh("agent_max_slope", +5)
         elif key_code == ord('k'):
             self.update_navmesh("agent_max_slope", -5)
-        return False
+        elif key_code == ord('o'):
+            self.save_navmesh()
+        else:
+            update = False
+        return update
 
     def teleport_agent(self):
         pos = self.drag_start * self.map_resolution + self.map_origin
@@ -125,6 +136,12 @@ class NavmeshInspector:
                     self.map_img = cv2.resize(self.map_img, None, fx=self.scale, fy=self.scale)
                 print("Done!")
 
+    def save_navmesh(self):
+        out = self.cfg.SCENE.replace(".glb", ".navmesh")
+        print("Saving navmesh as '{}'...".format(out), end=' ', flush=True)
+        self.sim.pathfinder.save_nav_mesh(out)
+        print("Done!")
+
     def draw_map(self):
         disp = self.map_img.copy()
         s = self.sim.get_agent_state()
@@ -147,11 +164,11 @@ class NavmeshInspector:
         cv2.imshow(self.obs_win_name, self.draw_obs())
 
     def run(self):
-        while True:
-            self.show()
+        self.show()
+        while self.running:
             c = cv2.waitKey(30)
             if self.on_key_press(c):
-                break
+                self.show()
 
 
 if __name__ == "__main__":
