@@ -75,10 +75,12 @@ class NavmeshInspector:
             norm = np.sqrt(drag_vec.dot(drag_vec))
             if norm > 0:
                 self.drag_vec = drag_vec / norm
+                self.show()
         elif event == cv2.EVENT_LBUTTONUP:
             self.teleport_agent()
             self.drag_start = None
             self.drag_vec = None
+            self.show()
 
     def on_key_press(self, key_code):
         update = True
@@ -93,9 +95,9 @@ class NavmeshInspector:
         elif key_code == ord('r'):
             self.obs = self.sim.reset()
         elif key_code == ord('u'):
-            self.update_navmesh("agent_max_climb", +0.02)
+            self.update_navmesh("agent_max_climb", +0.01)
         elif key_code == ord('j'):
-            self.update_navmesh("agent_max_climb", -0.02)
+            self.update_navmesh("agent_max_climb", -0.01)
         elif key_code == ord('i'):
             self.update_navmesh("agent_max_slope", +5)
         elif key_code == ord('k'):
