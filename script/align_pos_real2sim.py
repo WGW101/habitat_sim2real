@@ -19,7 +19,6 @@ import quaternion
 IN_DIR = "out/traj_cap/real"
 OUT_DIR = "out/traj_cap/sim"
 CFG_PATH = "configs/locobot_pointnav_citi_sim.yaml"
-N_MEASURES = 1
 STEP_SIZE = 0.05
 TURN_ANGLE = 1
 TILT_ANGLE = 1
@@ -44,7 +43,6 @@ def parse_args():
     parser.add_argument("--input-dir", "-i", default=IN_DIR)
     parser.add_argument("--output-dir", "-o", default=OUT_DIR)
     parser.add_argument("--cfg-path", "-c", default=CFG_PATH)
-    parser.add_argument("--n-measures", "-n", type=int, default=N_MEASURES)
     parser.add_argument("--step-size", type=float, default=STEP_SIZE)
     parser.add_argument("--turn-angle", type=float, default=TURN_ANGLE)
     parser.add_argument("--tilt-angle", type=float, default=TILT_ANGLE)
@@ -175,21 +173,16 @@ def main(args):
     match_file.write("# REAL RGB IMG PATH,    # SIM RGB IMG PATH\n")
 
     sim = setup_sim(args.step_size, args.turn_angle, args.tilt_angle)
-    y = sim.get_agent_state().position[1]
-    a = numpy.radians(INIT_OFF_A)
-    sim_obs = sim.get_observations_at([INIT_OFF_X, y, INIT_OFF_Z],
-                                      [0, numpy.sin(0.5*a), 0, numpy.cos(0.5*a)], True)
+    off_pos = [INIT_OFF_X, 0, INIT_OFF_Z]
+    off_a = numpy.radians(INIT_OFF_A)
     print(USAGE)
 
     measure_cnt = 0
-    mean_offset_pos = [0, 0, 0]
-    mean_offset_a = 0
     for real_pos, real_a, real_obs, real_filepath in stamped_images(args.input_dir):
         cv2.imshow("Real robot", real_obs if args.no_grid else draw_grid(real_obs))
         print_pos("Real robot", real_pos, real_a)
 
-        if measure_cnt >= args.n_measures:
-            sim_obs = apply_offset(sim, mean_offset_pos, mean_offset_a, real_pos, real_a)
+        sim_obs = apply_offset(sim, off_pos, off_a, real_pos, real_a)
 
         while True:
             state = sim.get_agent_state()
@@ -212,11 +205,6 @@ def main(args):
 
         off_pos, off_a = calc_offset(state.position, sim_a, real_pos, real_a)
         print_pos("Offset", off_pos, off_a)
-
-        mean_offset_pos = [(measure_cnt * mu + o) / (measure_cnt + 1)
-                           for mu, o in zip(mean_offset_pos, off_pos)]
-        mean_offset_a = (measure_cnt * mean_offset_a + off_a) / (measure_cnt + 1)
-        measure_cnt += 1
 
         sim_filepath = save_obs(args.output_dir, sim_obs, state.position, sim_a)
         match_file.write(real_filepath + ",    " + sim_filepath + "\n")
