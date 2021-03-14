@@ -1,6 +1,4 @@
 import os
-import threading
-import queue
 
 import rospy
 from sensor_msgs.msg import Image
@@ -13,6 +11,10 @@ import numpy
 
 MIN_DEPTH = 0.155
 MAX_DEPTH = 10.0
+MIN_MOVE_DIST = 0.2
+MIN_MOVE_ANG = 10
+OUT_DIR = "out/traj_cap/real"
+
 
 
 class ROSBagExporter:
@@ -28,10 +30,8 @@ class ROSBagExporter:
         self.tf_listerner = tf2_ros.TransformListener(self.tf_buffer)
         self.prv_pose = None
 
-        os.makedirs("out/real", exist_ok=True)
-        self.save_queue = queue.Queue()
-        self.save_thread = threading.Thread(target=self.save_worker, daemon=True)
-        self.save_thread.start()
+        os.makedirs(OUT_DIR, exist_ok=True)
+        self.list_f = open(os.path.join(OUT_DIR, "chrono_list.txt"), 'w')
 
     def on_images(self, color_img_msg, depth_img_msg):
         try:
@@ -42,12 +42,11 @@ class ROSBagExporter:
         pose = self.get_robot_pose()
         if pose is not None and self.has_moved(pose):
             str_pose = "x{:.3f}_y{:.3f}_z{:.3f}_r{:.0f}".format(*pose)
-            self.save_queue.put(("out/real/" + str_pose + "_rgb.jpeg", raw_color[:, :, ::-1]))
             depth = raw_depth.astype(numpy.float32) / 1000
             depth = numpy.clip(depth, MIN_DEPTH, MAX_DEPTH)
             depth = (depth - MIN_DEPTH) / (MAX_DEPTH - MIN_DEPTH)
             converted = (depth * 255).astype(numpy.uint8)
-            self.save_queue.put(("out/real/" + str_pose + "_depth.jpeg", converted))
+            self.save(str_pose, raw_color[:, :, ::-1], converted)
             self.prv_pose = pose
 
     def get_robot_pose(self):
@@ -70,19 +69,20 @@ class ROSBagExporter:
             d_th += 180
         if d_th > 180:
             d_th -= 180
-        return numpy.sqrt(numpy.sum((new_pose[:3] - self.prv_pose[:3])**2)) >= 0.2 \
-                or abs(d_th) >= 10
+        return numpy.sqrt(numpy.sum((new_pose[:3] - self.prv_pose[:3])**2)) >= MIN_MOVE_DIST \
+                or abs(d_th) >= MIN_MOVE_ANG
 
     def run(self):
         rospy.spin()
-        self.save_queue.join()
+        self.list_f.close()
 
-    def save_worker(self):
-        while True:
-            filename, image = self.save_queue.get()
-            print("Saving '{}' (queue_size: {})".format(filename, queue.qsize()))
-            cv2.imwrite(filename, image)
-            self.save_queue.task_done()
+    def save(self, filebase, rgb, depth):
+        print("Saving '{}'".format(filebase))
+        path = os.path.join(OUT_DIR, filebase + "_rgb.jpeg")
+        self.list_f.write(path + '\n')
+        cv2.imwrite(path, rgb)
+        path = os.path.join(OUT_DIR, filebase + "_depth.jpeg")
+        cv2.imwrite(path, depth)
 
 
 if __name__ == "__main__":

@@ -16,13 +16,16 @@ import numpy
 import quaternion
 
 
-IN_DIR = "out/real"
-OUT_DIR = "out/sim"
+IN_DIR = "out/traj_cap/real"
+OUT_DIR = "out/traj_cap/sim"
 CFG_PATH = "configs/locobot_pointnav_citi_sim.yaml"
 N_MEASURES = 1
 STEP_SIZE = 0.05
 TURN_ANGLE = 1
 TILT_ANGLE = 1
+INIT_OFF_X = 7.336
+INIT_OFF_Z = 0.260
+INIT_OFF_A = 163
 
 USAGE = """\
 Navigate in the simulation to get the same observation as on the real robot
@@ -60,13 +63,13 @@ def setup_sim(step_size, turn_ang, tilt_ang):
 
 
 def stamped_images(input_dir):
-    filepath = os.path.join(input_dir, "x0.000_y0.000_z0.000_r0_rgb.jpeg")
-    yield (0, 0, 0), 0, cv2.imread(filepath), filepath
-    for filepath in glob.iglob(os.path.join(input_dir, "*_rgb.jpeg")):
-        filename = os.path.basename(filepath)
-        real_x, real_y, real_z, real_a = (float(s[1:]) for s in filename.split('_')[:-1])
-        real_a = numpy.radians(real_a)
-        yield [real_x, real_y, real_z], real_a, cv2.imread(filepath), filepath
+    with open(os.path.join(input_dir, "chrono_list.txt")) as f:
+        for l in f:
+            filepath = l.strip()
+            filename = os.path.basename(filepath)
+            real_x, real_y, real_z, real_a = (float(s[1:]) for s in filename.split('_')[:-1])
+            real_a = numpy.radians(real_a)
+            yield [real_x, real_y, real_z], real_a, cv2.imread(filepath), filepath
 
 
 def draw_grid(img):
@@ -172,8 +175,10 @@ def main(args):
     match_file.write("# REAL RGB IMG PATH,    # SIM RGB IMG PATH\n")
 
     sim = setup_sim(args.step_size, args.turn_angle, args.tilt_angle)
-    sim_obs = sim.reset()
-
+    y = sim.get_agent_state().position[1]
+    a = numpy.radians(INIT_OFF_A)
+    sim_obs = sim.get_observations_at([INIT_OFF_X, y, INIT_OFF_Z],
+                                      [0, numpy.sin(0.5*a), 0, numpy.cos(0.5*a)], True)
     print(USAGE)
 
     measure_cnt = 0
