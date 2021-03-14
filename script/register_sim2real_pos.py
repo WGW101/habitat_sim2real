@@ -3,12 +3,14 @@
 import os
 os.environ["GLOG_minloglevel"] = "2"
 os.environ["MAGNUM_LOG"] = "quiet"
+import logging
 
 import glob
 import random
 import argparse
 
 import habitat
+habitat.logger.setLevel(logging.ERROR)
 import cv2
 import numpy
 import quaternion

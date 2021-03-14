@@ -47,7 +47,7 @@ class BaseSimulatorViewer:
 
     def on_key_press(self, key_code):
         update = True
-        if key_code == ord('s'):
+        if key_code == ord('x'):
             self.running = False
         elif key_code == ord('w'):
             self.obs = self.sim.step(1)

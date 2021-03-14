@@ -1,5 +1,6 @@
 import math
 import numpy
+import cv2
 import quaternion
 import random
 
@@ -18,7 +19,8 @@ class ROSDepthSensor(DepthSensor):
                           dtype=numpy.float32)
 
     def get_observation(self, sim_obs):
-        out = sim_obs[1].astype(numpy.float32) * 0.001
+        out = cv2.resize(sim_obs[1], (self.config.WIDTH, self.config.HEIGHT))
+        out = out.astype(numpy.float32) * 0.001
         out = numpy.clip(out, self.config.MIN_DEPTH, self.config.MAX_DEPTH)
         if self.config.NORMALIZE_DEPTH:
             out = (out - self.config.MIN_DEPTH) \
@@ -34,7 +36,8 @@ class ROSRGBSensor(RGBSensor):
                           dtype=numpy.uint8)
 
     def get_observation(self, sim_obs):
-        return sim_obs[0]
+        out = cv2.resize(sim_obs[0], (self.config.WIDTH, self.config.HEIGHT))
+        return out
 
 
 class AgentState:
