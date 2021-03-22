@@ -1,5 +1,5 @@
 import numpy as np
-from quaternion import rotate_vectors as quat_rot
+from quaternion import quaternion as quat
 import cv2
 
 import habitat
@@ -54,17 +54,17 @@ class BaseSimulatorViewer:
         elif key_code == ord('r'):
             self.obs = self.sim.reset()
         elif key_code == ord('w'):
-            self.obs = self.sim.step(1)
-        elif key_code == ord('q'):
-            self.obs = self.sim.step(2)
-        elif key_code == ord('e'):
-            self.obs = self.sim.step(3)
+            self.move_agent(self.cfg.FORWARD_STEP_SIZE, 0)
         elif key_code == ord('s'):
             self.move_agent(-self.cfg.FORWARD_STEP_SIZE, 0)
         elif key_code == ord('a'):
             self.move_agent(0, -self.cfg.FORWARD_STEP_SIZE)
         elif key_code == ord('d'):
             self.move_agent(0, self.cfg.FORWARD_STEP_SIZE)
+        elif key_code == ord('q'):
+            self.obs = self.sim.step(2)
+        elif key_code == ord('e'):
+            self.obs = self.sim.step(3)
         else:
             update = False
         return update
@@ -82,8 +82,9 @@ class BaseSimulatorViewer:
         if forward == 0 and right == 0:
             return
         s = self.sim.get_agent_state()
-        move = quat_rot(s.rotation, np.array([[right, 0, -forward]]))[0]
-        pos = s.position + move
+        q = quat(0, right, 0, -forward)
+        move = s.rotation * q * s.rotation.conjugate()
+        pos = s.position + move.vec
         self.obs = self.sim.get_observations_at(pos, s.rotation, True)
 
     def project_pos_to_map(self, pos):
@@ -97,7 +98,8 @@ class BaseSimulatorViewer:
         if pos is None:
             s = self.sim.get_agent_state()
             pos = self.project_pos_to_map(s.position)
-            head = quat_rot(s.rotation, np.array([[0, 0, -1.0]]))[0, ::2]
+            q = quat(0, 0, 0, -1)
+            head = (s.rotation * q * s.rotation.conjugate()).vec[::2]
         elif head is None:
             head = np.array([0.0, 1.0])
         cv2.circle(disp, tuple(pos), 5, color, -1)

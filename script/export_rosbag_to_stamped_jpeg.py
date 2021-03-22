@@ -12,8 +12,8 @@ import numpy
 MIN_DEPTH = 0.155
 MAX_DEPTH = 10.0
 MIN_MOVE_DIST = 0.2
-MIN_MOVE_ANG = 10
-OUT_DIR = "out/traj_cap/real"
+MIN_MOVE_ANG = 5
+OUT_DIR = "out/traj_cap/21-03-18/real"
 
 
 
@@ -51,7 +51,7 @@ class ROSBagExporter:
 
     def get_robot_pose(self):
         try:
-            trans = self.tf_buffer.lookup_transform("map", "base_footprint", rospy.Time(0))
+            trans = self.tf_buffer.lookup_transform("map", "base_link", rospy.Time(0))
         except (tf2_ros.LookupException,
                 tf2_ros.ConnectivityException,
                 tf2_ros.ExtrapolationException):

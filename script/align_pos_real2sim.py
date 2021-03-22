@@ -16,15 +16,18 @@ import numpy
 import quaternion
 
 
-IN_DIR = "out/traj_cap/real"
-OUT_DIR = "out/traj_cap/sim"
+IN_DIR = "out/traj_cap/21-03-18/real"
+OUT_DIR = "out/traj_cap/21-03-18/sim"
 CFG_PATH = "configs/locobot_pointnav_citi_sim.yaml"
 STEP_SIZE = 0.05
 TURN_ANGLE = 1
 TILT_ANGLE = 1
-INIT_OFF_X = 7.336
-INIT_OFF_Z = 0.260
-INIT_OFF_A = 163
+INIT_OFF_X = 10.477
+INIT_OFF_Z = -0.4
+INIT_OFF_A = -3
+#INIT_OFF_X = 7.336
+#INIT_OFF_Z = 0.260
+#INIT_OFF_A = 163
 
 USAGE = """\
 Navigate in the simulation to get the same observation as on the real robot

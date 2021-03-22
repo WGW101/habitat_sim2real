@@ -9,7 +9,7 @@ SIMULATOR:
   DEPTH_SENSOR:
     WIDTH: 320                              # Scaled down (0.5)
     HEIGHT: 240                             # Scaled down (0.5)
-    HFOV: 80                                # Measured on robot, docs give 80°
+    HFOV: 80                                # Measured on robot, docs give 90°
     MIN_DEPTH: 0.155                        # Measured on robot, docs give 0.12m
     MAX_DEPTH: 10.0                         # From docs
     NORMALIZE: true

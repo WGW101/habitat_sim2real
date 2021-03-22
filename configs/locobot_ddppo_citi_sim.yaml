@@ -9,11 +9,13 @@ VIDEO_DIR: "out/ddppo/video_dir"
 TEST_EPISODE_COUNT: -1
 EVAL_CKPT_PATH_DIR: "out/ddppo/checkpoints"
 NUM_PROCESSES: 1
-SENSORS: ["DEPTH_SENSOR"]
+NUM_ENVIRONMENTS: 1
+SENSORS: ["RGB_SENSOR", "DEPTH_SENSOR"]
 CHECKPOINT_FOLDER: "out/ddppo/checkpoints"
-NUM_UPDATES: 10000
+NUM_UPDATES: -1
 LOG_INTERVAL: 10
 CHECKPOINT_INTERVAL: 250
+NUM_CHECKPOINS: 100
 RL:
   SUCCESS_REWARD: 2.5
   POLICY:
@@ -38,7 +40,7 @@ RL:
     hidden_size: 512
   DDPPO:
     sync_frac: 0.6
-    distrib_backend: GLOO
+    distrib_backend: NCCL
     pretrained_weights: out/ddppo/models/gibson-2plus-resnet50.pth
     pretrained: False
     pretrained_encoder: False
