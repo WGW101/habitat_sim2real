@@ -1,58 +1,45 @@
-#!/usr/bin/env python3
-
 import os
 os.environ["GLOG_minloglevel"] = "2"
 os.environ["MAGNUM_LOG"] = "quiet"
+import logging
 
 import argparse
-import logging
-import random
-import gzip
+import numpy as np
+from scipy.spatial import KDTree
 import tqdm
-import math
-from scipy.spatial.distance import pdist as pairwise_distance
+import gzip
 
 import habitat
 habitat.logger.setLevel(logging.ERROR)
 from habitat.tasks.nav.nav import NavigationGoal, NavigationEpisode
 
 
-CFG_PATH = "configs/locobot_multigoal_pointnav_citi_sim.yaml"
-N_EPISODES = 300
-N_GOALS_PER_EP = 10
-DIFFICULTIES = ("very easy", "easy", "medium", "hard")
-DIFFICULTY_BOUNDS = (1.0, 3.0, 7.0, 13.0, 20.0)
-DIFFICULTY_RATIOS = "50, 15, 20, 15"
-MIN_DIST_RATIO = 1.1
+DEFAULT_ARGS = {"config_path": "configs/locobot_multigoal_pointnav_citi_sim.yaml",
+                "n_episodes": 1000,
+                "episodes_len": 10,
+                "min_dist": 1.0,
+                "max_dist": 7.0,
+                "min_dist_ratio": 1.05,
+                "if_exist": "exit"}
+N_POINTS = 6000
+MAX_RETRIES = 10
 MIN_ISLAND_RADIUS = 1.5
 EPS = 1e-5
 
-
 def parse_args():
-    parser = argparse.ArgumentParser(description="Generate random pointnav train/test datasets")
-    parser.add_argument("--config-path", "-c", default=CFG_PATH, help="Path to config file")
-    parser.add_argument("--n-episodes", "-n", type=int, default=N_EPISODES,
-                        help="Number of episodes to include in the train dataset")
-    parser.add_argument("--n-goals-per-ep", "-m", type=int, default=N_GOALS_PER_EP,
-                        help="Number of episodes to include in the train dataset")
-    parser.add_argument("--difficulty-ratios", "-r", default=DIFFICULTY_RATIOS,
-                        help="Relative number of 'very easy', 'easy'," \
-                             + " 'medium' and 'hard' episodes")
-    parser.add_argument("--seed", "-s", type=int, default=random.randint(10000,100000),
-                        help="Seed used to initialize the RNG")
-    parser.add_argument("extra_cfg", nargs=argparse.REMAINDER,
-                        help="Extra config options as '<KEY> <value>' pairs")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config-path", "-c")
+    parser.add_argument("--n-episodes", "-n", type=int)
+    parser.add_argument("--episodes-len", "-l", type=int)
+    parser.add_argument("--min-dist", type=float)
+    parser.add_argument("--max-dist", type=float)
+    parser.add_argument("--min-dist-ratio", type=float)
+    parser.add_argument("--seed", "-s", type=int)
+    parser.add_argument("--if-exist", choices=["override", "append", "exit"])
+    parser.add_argument("extra_cfg", nargs=argparse.REMAINDER)
+
+    parser.set_defaults(**DEFAULT_ARGS)
     return parser.parse_args()
-
-
-def parse_difficulty_ratios(args):
-    ratios = [float(r) for r in args.difficulty_ratios.split(',')]
-    if any(r < 0 for r in ratios) or len(ratios) != 4:
-        raise ValueError(f"Invalid difficulty ratios argument: '{args.difficulty_ratios}'")
-    tot = sum(ratios)
-    return {k: (int(r * args.n_episodes / tot), min_d, max_d)
-            for k, r, min_d, max_d in zip(DIFFICULTIES, ratios,
-                                          DIFFICULTY_BOUNDS[:-1], DIFFICULTY_BOUNDS[1:])}
 
 
 def sample_point(sim, height=None, radius=MIN_ISLAND_RADIUS):
@@ -62,73 +49,75 @@ def sample_point(sim, height=None, radius=MIN_ISLAND_RADIUS):
     return pt
 
 
-def make_episode(ep_id, scene_id, src, destinations, success_dist, difficulty, geo_dist):
-    a = 2 * math.pi * random.random()
-    q = [0, math.sin(a / 2), 0, math.cos(a / 2)]
+def allow_straight(rng, d, euc_d, min_dist_ratio):
+    r = (d + EPS) / euc_d
+    return r >= min_dist_ratio or rng.random() < 20 * (r - 0.98)**2
+
+
+def make_episode(rng, ep_id, scene_id, src, destinations, success_dist, tot_geo_dist):
+    a = 2 * np.pi * rng.random()
+    q = [0, np.sin(a / 2), 0, np.cos(a / 2)]
     goals = [NavigationGoal(position=dst, radius=success_dist) for dst in destinations]
-    episode = NavigationEpisode(episode_id=ep_id, scene_id=scene_id,
-                                start_position=src, start_rotation=q, goals=goals,
-                                info={"difficulty": difficulty,
-                                      "geodesic_distance": geo_dist})
+    return NavigationEpisode(episode_id=ep_id, scene_id=scene_id,
+                             start_position=src, start_rotation=q, goals=goals,
+                             info={"geodesic_distance": tot_geo_dist})
 
 
 def main(args):
     cfg = habitat.get_config(args.config_path, args.extra_cfg)
-    out_file = cfg.DATASET.DATA_PATH.format(split=cfg.DATASET.SPLIT)
-    os.makedirs(os.path.dirname(out_file), exist_ok=True)
+    out_fpath = cfg.DATASET.DATA_PATH.format(split=cfg.DATASET.SPLIT)
+    os.makedirs(os.path.dirname(out_fpath), exist_ok=True)
 
-    difficulties = parse_difficulty_ratios(args)
+    rng = np.random.default_rng(args.seed)
 
+    try:
+        dataset = habitat.make_dataset(cfg.DATASET.TYPE, config=cfg.DATASET)
+        if args.if_exist == "exit":
+            print("Dataset already exists! " \
+                    + "Change the value of --if-exist to 'append' or 'override'")
+            return
+        elif args.if_exist == "override":
+            dataset.episodes = []
+    except FileNotFoundError:
+        dataset = habitat.make_dataset(cfg.DATASET.TYPE)
     sim = habitat.sims.make_sim(cfg.SIMULATOR.TYPE, config=cfg.SIMULATOR)
+    sim.seed(rng.integers(1, 100000))
     height = sim.get_agent_state().position[1]
-    print("Using seed: {}".format(args.seed))
-    sim.seed(args.seed)
-    dataset = habitat.datasets.make_dataset(cfg.DATASET.TYPE)
 
-    n_pts = (args.n_goals_per_ep + 1) * args.n_episodes
-    nav_pts = [sample_point(sim, height) for _ in range(n_pts)]
+    points = np.array([sample_point(sim, height) for _ in range(N_POINTS)])
+    tree = KDTree(points)
 
-    pairs = [(i, j) for i in range(n_pts - 1) for j in range(i + 1, n_pts)]
-    euc_dists = pairwise_distance(nav_pts)
-
-    tot_cnt = 0
+    init_len = len(dataset.episodes)
+    ep_cnt = init_len
     with tqdm.tqdm(total=args.n_episodes) as progress:
-        for k, (n_ep, min_d, max_d) in difficulties.items():
-            # Pre-filter candidate pairs of (src, dst) by euclidean distance
-            candidates = [(p, euc_d) for p, euc_d in zip(pairs, euc_dists)
-                          if 0.8 * min_d <= euc_d <= 1.2 * max_d]
-
-            for ep in range(n_ep):
-                d = None
-                while d is None or d < min_d or d > max_d or d / euc_d < MIN_DIST_RATIO:
-                    (i, j), euc_d = random.choice(candidates)
-                    src = nav_pts[i]
-                    dst = nav_pts[j]
-                    d = sim.geodesic_distance(src, dst)
-                last = j
-                destinations = [dst]
-                tot_d = d
-
-                for _ in range(args.n_goals_per_ep - 1):
-                    nxt_candidates = [(j, euc_d) for (i, j), euc_d in candidates if i == last] \
-                                   + [(i, euc_d) for (i, j), euc_d in candidates if j == last]
-                    d = None
-                    while d is None or d < min_d or d > max_d or d / euc_d < MIN_DIST_RATIO:
-                        j, euc_d = random.choice(nxt_candidates)
-                        src = nav_pts[last]
-                        dst = nav_pts[j]
-                        d = sim.geodesic_distance(src, dst)
-                    last = j
-                    destinations.append(dst)
-                    tot_d += d
-
-                episode = make_episode(str(tot_cnt), cfg.SIMULATOR.SCENE, src, destinations,
-                                       cfg.TASK.SUCCESS.SUCCESS_DISTANCE, k, tot_d)
+        while len(dataset.episodes) < init_len + args.n_episodes:
+            src = rng.choice(points)
+            destinations = []
+            prv = src
+            tot_d = 0
+            for _ in range(args.episodes_len):
+                too_near_indices = tree.query_ball_point(prv, 0.8 * args.min_dist)
+                near_indices = tree.query_ball_point(prv, args.max_dist)
+                indices = list(set(near_indices) - set(too_near_indices))
+                for _ in range(MAX_RETRIES):
+                    nxt = rng.choice(points[indices])
+                    euc_d = np.sqrt(np.sum((nxt - prv)**2))
+                    d = sim.geodesic_distance(prv, nxt)
+                    if np.isfinite(d) and args.min_dist <= d <= args.max_dist \
+                            and allow_straight(rng, d, euc_d, args.min_dist_ratio):
+                                break
+                else:
+                    break
+                tot_d += d
+                destinations.append(nxt)
+                prv = nxt
+            else:
+                episode = make_episode(rng, str(ep_cnt), cfg.SIMULATOR.SCENE, src, destinations,
+                                       cfg.TASK.SUCCESS.SUCCESS_DISTANCE, tot_d)
                 dataset.episodes.append(episode)
-                tot_cnt += 1
-                progress.update(1)
-
-    with gzip.open(out_file, "wt") as f:
+                ep_cnt += 1
+                progress.update()
+    with gzip.open(out_fpath, "wt") as f:
         f.write(dataset.to_json())
 
 
