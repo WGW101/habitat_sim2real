@@ -9,6 +9,13 @@ except ImportError as e:
             raise e
 
 try:
+    from .sims.habitat_simulator.realistic_depth_sensor import RealisticHabitatSimDepthSensor
+except ImportError as e:
+    class RealisticHabitatSimDepthSensor:
+        def __init__(*args, **kwargs):
+            raise e
+
+try:
     from .sims.ros.rosrobot_sim import ROSRobot
     from .sims.ros.intf_node import HabitatInterfaceROSNode
     from .sims.ros.default_cfg import merge_ros_config, get_config
@@ -24,7 +31,6 @@ except ImportError as e:
         raise e
     def get_config(*args, **kwargs):
         raise e
-
 
 try:
     from .sims.jetbot.hetbot_sim import Jetbot

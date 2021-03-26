@@ -4,9 +4,10 @@ import numpy as np
 def _my_interp(x, xp, fp, func):
     w = xp[1:] - xp[:-1]
     idx = np.digitize(x, xp) - 1
-    xi = xp[idx]
-    xf = (x - xi) / w[idx]
+    xf = (x - xp[idx]) / w[idx]
     f = func(xf)
+    out_ndim = fp.ndim
+    f = np.expand_dims(f, tuple(range(1, out_ndim)))
     return fp[idx] * (1 - f) + fp[idx + 1] * f
 
 def poly5_interp(x, xp, fp):
@@ -77,7 +78,6 @@ def perlin_2d(width, height, amp, freq, octaves=1, persist=0.5, seed=None, x=Non
 
         amp *= persist
         freq *= 2
-
     if octaves > 1:
         img *= (1 - persist) / (1 - persist**octaves)
     return img
