@@ -39,7 +39,7 @@ class RealisticHabitatSimDepthSensor(HabitatSimDepthSensor):
 
         band_noise = perlin_1d(**self.occl_band_noise_params) \
                 + 2 * self.occl_band_noise_params["amp"]
-        for y in range(480):
+        for y in range(self.config.HEIGHT):
             b = band_noise[y]
             if obs[y, 0] > 0:
                 b = 2 * b / obs[y, 0]**0.5
