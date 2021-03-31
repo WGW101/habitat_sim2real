@@ -13,12 +13,12 @@ class RealisticHabitatSimDepthSensor(HabitatSimDepthSensor):
         self.grad_thresh = 0.3
         self.occl_band_noise_params ={"size": config.HEIGHT,
                                       "amp": 8,
-                                      "freq": 0.04,
+                                      "freq": 0.16,
                                       "octaves": 3}
         self.img_noise_params = {"width": config.WIDTH,
                                  "height": config.HEIGHT,
                                  "amp": 0.6,
-                                 "freq": 0.016,
+                                 "freq": 0.064,
                                  "octaves": 4}
         self.speckles_thresh = 0.84
 
