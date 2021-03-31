@@ -35,7 +35,7 @@ class RealisticHabitatSimDepthSensor(HabitatSimDepthSensor):
             b = band_noise[y]
             if obs[y, x] > 0:
                 b = b / obs[y, x]**0.5
-            obs[y, int(x - b):x] = np.nan
+            obs[y, int(x - b):x] = 0
 
         band_noise = perlin_1d(**self.occl_band_noise_params) \
                 + 2 * self.occl_band_noise_params["amp"]
@@ -43,12 +43,12 @@ class RealisticHabitatSimDepthSensor(HabitatSimDepthSensor):
             b = band_noise[y]
             if obs[y, 0] > 0:
                 b = 2 * b / obs[y, 0]**0.5
-            obs[y, :int(b)] = np.nan
+            obs[y, :int(b)] = 0
 
         img_noise = perlin_2d(**self.img_noise_params) + 1
         obs *= img_noise
 
-        obs[img_noise < self.speckles_thresh] = np.nan
+        obs[img_noise < self.speckles_thresh] = 0
         
         obs = np.clip(obs, self.config.MIN_DEPTH, self.config.MAX_DEPTH)[:, :, None]
         if self.config.NORMALIZE_DEPTH:
