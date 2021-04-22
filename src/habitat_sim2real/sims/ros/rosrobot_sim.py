@@ -67,8 +67,19 @@ class ROSRobot(Simulator):
     def action_space(self):
         return self._action_space
 
+    def reconfigure(self, config):
+        self.config = config
+
     def reset(self):
-        self.intf_node.set_camera_tilt(0)
+        ag_cfg = getattr(self.config, self.config.AGENTS[self.config.DEFAULT_AGENT_ID])
+        if ag_cfg.IS_SET_START_STATE:
+            pos = numpy.array(ag_cfg.START_POSITION)
+            rot = quaternion.quaternion(ag_cfg.START_ROTATION[3], *ag_cfg.START_ROTATION[:3])
+            state = self.get_agent_state()
+            if not (numpy.allclose(pos, state.position)
+                    and quaternion.isclose(rot, state.rotation)):
+            self.intf_node.move_to_absolute(-pos[3], -pos[0], 2 * math.atan(rot.y / rot.w))
+        self.intf_node.set_camera_tilt(self.config.RGB_SENSOR.ROTATION[0])
         self.intf_node.clear_collided()
         raw_images = self.intf_node.get_raw_images()
         return self._sensor_suite.get_observations(raw_images)
