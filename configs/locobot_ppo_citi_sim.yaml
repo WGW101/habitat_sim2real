@@ -8,7 +8,7 @@ TENSORBOARD_DIR: "out/ppo/tb"
 VIDEO_DIR: "out/ppo/video_dir"
 TEST_EPISODE_COUNT: -1
 EVAL_CKPT_PATH_DIR: "out/ppo/checkpoints"
-NUM_ENVIRONMENTS: 1
+NUM_ENVIRONMENTS: 6
 SENSORS: ["RGB_SENSOR", "DEPTH_SENSOR"]
 CHECKPOINT_FOLDER: "out/ppo/checkpoints"
 NUM_UPDATES: 270000
@@ -19,7 +19,7 @@ RL:
   PPO:
     clip_param: 0.1
     ppo_epoch: 4
-    num_mini_batch: 1
+    num_mini_batch: 2
     value_loss_coef: 0.5
     entropy_coef: 0.01
     lr: 2.5e-4

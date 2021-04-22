@@ -1,3 +1,7 @@
+import itertools
+import os.path
+import gzip
+
 from habitat.core.env import Env
 from habitat.tasks.nav.nav import NavigationGoal, NavigationEpisode
 
@@ -12,6 +16,16 @@ class ROSEnv(Env):
         config = merge_ros_config(config)
         super().__init__(config, None)
         self.episode_count = 0
+
+    def close(self):
+        out_path = self._config.DATASET.DATA_PATH
+        out_base, out_ext = os.path.splitext(out_path)
+        suffix = itertools.count()
+        while os.path.exists(out_path):
+            out_path = out_base + "_ROS{:02d}".format(next(suffix)) + out_ext
+        with gzip.open(out_path, 'wt') as f:
+            f.write(self._dataset.to_json())
+        super().close()
 
     def reset(self):
         self._reset_stats()
