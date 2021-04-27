@@ -7,7 +7,7 @@ from habitat.utils.visualizations.maps import get_topdown_map_from_sim, colorize
 
 
 class BaseSimulatorViewer:
-    def __init__(self, sim_cfg, win_basename="Simulator", scale=None):
+    def __init__(self, sim_cfg, win_basename="Simulator", scale=None, draw_origin=False):
         self.cfg = sim_cfg
         self.sim = habitat.sims.make_sim(sim_cfg.TYPE, config=sim_cfg)
         self.obs = self.sim.reset()
@@ -18,15 +18,24 @@ class BaseSimulatorViewer:
         self.obs_win_name = win_basename + " - Observations"
         cv2.namedWindow(self.obs_win_name)
 
-        self.map_img = colorize_topdown_map(get_topdown_map_from_sim(self.sim))
+        self.raw_map = get_topdown_map_from_sim(self.sim)
+        self.map_img = colorize_topdown_map(self.raw_map)
         self.scale = scale
         if self.scale:
             self.map_img = cv2.resize(self.map_img, None, fx=self.scale, fy=self.scale)
-        bounds = self.sim.pathfinder.get_bounds()
-        self.map_origin = np.array([bounds[0][0], bounds[0][2]])
-        self.map_resolution = np.array([(bounds[1][0] - bounds[0][0]) / self.map_img.shape[1],
-                                        (bounds[1][2] - bounds[0][2]) / self.map_img.shape[0]])
-        self.map_height = self.sim.get_agent_state().position[1]
+        lower, upper = self.sim.pathfinder.get_bounds()
+        self.map_size = (self.map_img.shape[1], self.map_img.shape[0])
+        self.map_origin = np.array([lower[0], lower[2]])
+        self.map_resolution = np.array([(upper[0] - lower[0]) / self.map_size[0],
+                                        (upper[2] - lower[2]) / self.map_size[1]])
+        self.map_altitude = self.sim.get_agent_state().position[1]
+        if draw_origin:
+            o = self.project_pos_to_map([0, 0, 0])
+            ox = self.project_pos_to_map([1, 0, 0])
+            oz = self.project_pos_to_map([0, 0, 1])
+            cv2.line(self.map_img, tuple(o), tuple(ox), (0, 0, 255), 2)
+            cv2.line(self.map_img, tuple(o), tuple(oz), (255, 0, 0), 2)
+            cv2.circle(self.map_img, tuple(o), 5, (0, 255, 0), -1)
 
         self.drag_start = None
         self.drag_vec = None
@@ -92,7 +101,7 @@ class BaseSimulatorViewer:
 
     def project_map_to_pos(self, uv):
         xz = uv * self.map_resolution + self.map_origin
-        return np.array([xz[0], self.map_height, xz[1]])
+        return np.array([xz[0], self.map_altitude, xz[1]])
 
     def draw_agent_on_map(self, disp, pos=None, head=None, color=(255, 0, 0)):
         if pos is None:

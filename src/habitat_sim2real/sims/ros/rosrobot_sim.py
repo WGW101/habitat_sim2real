@@ -78,7 +78,7 @@ class ROSRobot(Simulator):
             state = self.get_agent_state()
             if not (numpy.allclose(pos, state.position)
                     and quaternion.isclose(rot, state.rotation)):
-            self.intf_node.move_to_absolute(-pos[3], -pos[0], 2 * math.atan(rot.y / rot.w))
+                self.intf_node.move_to_absolute(-pos[3], -pos[0], 2 * math.atan(rot.y / rot.w))
         self.intf_node.set_camera_tilt(self.config.RGB_SENSOR.ROTATION[0])
         self.intf_node.clear_collided()
         raw_images = self.intf_node.get_raw_images()
