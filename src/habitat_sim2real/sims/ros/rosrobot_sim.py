@@ -59,6 +59,8 @@ class ROSRobot(Simulator):
         else: # v1 or pyrobotnoisy
             self._action_space = spaces.Discrete(6)
 
+        self.previous_step_collided = False
+
     @property
     def sensor_suite(self):
         return self._sensor_suite
@@ -81,6 +83,7 @@ class ROSRobot(Simulator):
                 self.intf_node.move_to_absolute(-pos[3], -pos[0], 2 * math.atan(rot.y / rot.w))
         self.intf_node.set_camera_tilt(self.config.RGB_SENSOR.ROTATION[0])
         self.intf_node.clear_collided()
+        self.previous_step_collided = False
         raw_images = self.intf_node.get_raw_images()
         return self._sensor_suite.get_observations(raw_images)
 
@@ -101,6 +104,11 @@ class ROSRobot(Simulator):
             self.cur_camera_tilt += self.config.TILT_ANGLE
             self.cur_camera_tilt = max(-45, min(self.cur_camera_tilt, 45))
             self.intf_node.set_camera_tilt(math.radians(self.cur_camera_tilt))
+
+        has_collided = self.intf_node.has_collided()
+        if not self.previous_step_collided and has_collided:
+            self.intf_node.clear_collided()
+            self.previous_step_collided = True
 
         raw_images = self.intf_node.get_raw_images()
         return self._sensor_suite.get_observations(raw_images)

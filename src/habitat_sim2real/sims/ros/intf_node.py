@@ -162,7 +162,8 @@ class HabitatInterfaceROSNode:
 
     def set_camera_tilt(self, tilt):
         self.tilt_reached_event.clear()
-        self.tilt_target_value = int(2048 + 638 * tilt)
+        self.tilt_target_value = int(self.cfg.DYNAMIXEL_TICK_OFFSET
+                                     + self.cfg.DYNAMIXEL_TICK_PER_RAD * tilt)
         res = self.dynamixel_cmd_proxy("", self.cfg.DYNAMIXEL_TILT_ID,
                                        "Goal_Position", self.tilt_target_value)
         if res.comm_result:
