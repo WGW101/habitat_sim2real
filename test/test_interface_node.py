@@ -8,7 +8,7 @@ import cv2
 import time
 
 
-cfg = get_config("configs/locobot_pointnav_real.yaml")
+cfg = get_config("configs/locobot_pointnav_citi_sim.yaml")
 node = HabitatInterfaceROSNode(cfg.SIMULATOR.ROS)
 time.sleep(3)
 print("Node initialized!")
@@ -22,8 +22,7 @@ cv2.destroyAllWindows()
 
 print("Displaying map")
 map_grid, map_cell_size, map_origin_pos, map_origin_rot = node.get_map()
-disp = map_grid.astype(numpy.float32)
-disp = (disp - disp.min()) / (disp.max() - disp.min())
+disp = numpy.where(map_grid > -1, map_grid.astype(numpy.float32) / 100, 0.5)
 cv2.imshow("Map", disp)
 cv2.waitKey()
 cv2.destroyAllWindows()
