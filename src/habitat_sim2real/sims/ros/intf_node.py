@@ -6,7 +6,7 @@ import rospy
 import message_filters
 import cv_bridge
 import tf2_ros
-import tf_conversions
+import tf2_geometry_msgs
 import actionlib
 
 from geometry_msgs.msg import PoseStamped
@@ -25,7 +25,7 @@ class HabitatInterfaceROSNode:
         timeout = rospy.Duration(cfg.CONNECTION_TIMEOUT)
 
         try:
-            rospy.get_published_topics() # Raises ConnectionRefusedError if master is offline
+            rospy.get_published_topics()
         except ConnectionRefusedError:
             raise RuntimeError("Unable to connect to ROS master.")
         rospy.init_node(cfg.NODE_NAME)
@@ -89,7 +89,8 @@ class HabitatInterfaceROSNode:
         self.has_first_images.set()
 
     def get_raw_images(self):
-        self.has_first_images.wait()
+        if not self.has_first_images.wait(self.cfg.GETTER_TIMEOUT):
+            raise RuntimeError("Timed out waiting for raw image.")
         with self.img_buffer_lock:
             return self.raw_images_buffer
 
@@ -109,7 +110,8 @@ class HabitatInterfaceROSNode:
         self.has_first_map.set()
 
     def get_map(self):
-        self.has_first_map.wait()
+        if not self.has_first_map.wait(self.cfg.GETTER_TIMEOUT):
+            raise RuntimeError("Timed out waiting for map.")
         with self.map_buffer_lock:
             return self.map_buffer
 
@@ -121,7 +123,7 @@ class HabitatInterfaceROSNode:
         except (tf2_ros.LookupException,
                 tf2_ros.ConnectivityException,
                 tf2_ros.ExtrapolationException):
-            return None
+            return None, None
         p = (trans.transform.translation.x,
              trans.transform.translation.y,
              trans.transform.translation.z)
@@ -214,12 +216,6 @@ class HabitatInterfaceROSNode:
     def on_bump(self, bump_msg):
         if bump_msg.state == BumperEvent.PRESSED:
             self.move_base_client.cancel_goal()
-#            if bump_msg.bumper == BumperEvent.LEFT:
-#                pass
-#            elif bump_msg.bumper == BumperEvent.CENTER:
-#                pass
-#            elif bump_msg.bumper == BumperEvent.RIGHT:
-#                pass
             with self.collided_lock:
                 self.collided = True
 

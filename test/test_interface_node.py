@@ -22,7 +22,7 @@ cv2.destroyAllWindows()
 
 print("Displaying map")
 map_grid, map_cell_size, map_origin_pos, map_origin_rot = node.get_map()
-disp = numpy.where(map_grid > -1, map_grid.astype(numpy.float32) / 100, 0.5)
+disp = numpy.where(map_grid > -1, 1 - map_grid.astype(numpy.float32) / 100, 0.5)
 cv2.imshow("Map", disp)
 cv2.waitKey()
 cv2.destroyAllWindows()
