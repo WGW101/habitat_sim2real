@@ -47,6 +47,7 @@ class HabitatInterfaceROSNode:
 
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listerner = tf2_ros.TransformListener(self.tf_buffer)
+        self.tf_timeout = rospy.Duration(self.cfg.TF_TIMEOUT)
 
         self.move_base_client = actionlib.SimpleActionClient(cfg.MOVE_BASE_ACTION_SERVER,
                                                              MoveBaseAction)
@@ -114,6 +115,20 @@ class HabitatInterfaceROSNode:
             raise RuntimeError("Timed out waiting for map.")
         with self.map_buffer_lock:
             return self.map_buffer
+
+    def on_bump(self, bump_msg):
+        if bump_msg.state == BumperEvent.PRESSED:
+            self.move_base_client.cancel_goal()
+            with self.collided_lock:
+                self.collided = True
+
+    def has_collided(self):
+        with self.collided_lock:
+            return self.collided
+
+    def clear_collided(self):
+        with self.collided_lock:
+            self.collided = False
 
     def get_robot_pose(self):
         try:
@@ -196,11 +211,15 @@ class HabitatInterfaceROSNode:
         goal.target_pose.header.frame_id = frame_id
         goal.target_pose.pose.position.x = x
         goal.target_pose.pose.position.y = y
-        q = tf_conversions.transformations.quaternion_from_euler(0, 0, theta)
-        goal.target_pose.pose.orientation.x = q[0]
-        goal.target_pose.pose.orientation.y = q[1]
-        goal.target_pose.pose.orientation.z = q[2]
-        goal.target_pose.pose.orientation.w = q[3]
+        goal.target_pose.pose.orientation.z = numpy.sin(0.5 * theta)
+        goal.target_pose.pose.orientation.w = numpy.cos(0.5 * theta)
+        if frame_id != self.cfg.TF_REF_FRAME:
+            try:
+                goal = self.tf_buffer.transform(goal, self.cfg.TF_REF_FRAME, self.tf_timeout)
+            except (tf2_ros.LookupException,
+                    tf2_ros.ConnectivityException,
+                    tf2_ros.ExtrapolationException):
+                return False
         self.move_base_client.send_goal(goal)
         return self.move_base_client.wait_for_result()
 
@@ -212,17 +231,3 @@ class HabitatInterfaceROSNode:
         pose.pose.position.y = y
         pose.pose.position.z = 0
         self.episode_goal_pub.publish(pose)
-
-    def on_bump(self, bump_msg):
-        if bump_msg.state == BumperEvent.PRESSED:
-            self.move_base_client.cancel_goal()
-            with self.collided_lock:
-                self.collided = True
-
-    def has_collided(self):
-        with self.collided_lock:
-            return self.collided
-
-    def clear_collided(self):
-        with self.collided_lock:
-            self.collided = False
