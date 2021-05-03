@@ -31,6 +31,12 @@ except ImportError as e:
         raise e
     def get_config(*args, **kwargs):
         raise e
+    class ROSEnv:
+        def __init__(*args, **kwargs):
+            raise e
+    class ROSNavRLEnv:
+        def __init__(*args, **kwargs):
+            raise e
 
 try:
     from .sims.jetbot.hetbot_sim import Jetbot
