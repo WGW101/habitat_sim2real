@@ -7,6 +7,8 @@ from habitat.utils.visualizations.maps import get_topdown_map_from_sim, colorize
 
 
 class BaseSimulatorViewer:
+    CV2_WAIT_TIME = 30
+
     def __init__(self, sim_cfg, win_basename="Simulator", scale=None, draw_origin=False):
         self.cfg = sim_cfg
         self.sim = habitat.sims.make_sim(sim_cfg.TYPE, config=sim_cfg)
@@ -40,6 +42,7 @@ class BaseSimulatorViewer:
         self.drag_start = None
         self.drag_vec = None
         self.running = True
+        self.collision_enabled = False
 
     def on_mouse(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -62,18 +65,20 @@ class BaseSimulatorViewer:
             self.running = False
         elif key_code == ord('r'):
             self.obs = self.sim.reset()
+        elif key_code == ord('c'):
+            self.collision_enabled = not self.collision_enabled
         elif key_code == ord('w'):
-            self.move_agent(self.cfg.FORWARD_STEP_SIZE, 0)
+            self.translate_agent(self.cfg.FORWARD_STEP_SIZE, 0)
         elif key_code == ord('s'):
-            self.move_agent(-self.cfg.FORWARD_STEP_SIZE, 0)
+            self.translate_agent(-self.cfg.FORWARD_STEP_SIZE, 0)
         elif key_code == ord('a'):
-            self.move_agent(0, -self.cfg.FORWARD_STEP_SIZE)
+            self.translate_agent(0, -self.cfg.FORWARD_STEP_SIZE)
         elif key_code == ord('d'):
-            self.move_agent(0, self.cfg.FORWARD_STEP_SIZE)
+            self.translate_agent(0, self.cfg.FORWARD_STEP_SIZE)
         elif key_code == ord('q'):
-            self.obs = self.sim.step(2)
+            self.rotate_agent(self.cfg.TURN_ANGLE)
         elif key_code == ord('e'):
-            self.obs = self.sim.step(3)
+            self.rotate_agent(-self.cfg.TURN_ANGLE)
         else:
             update = False
         return update
@@ -85,16 +90,31 @@ class BaseSimulatorViewer:
         else:
             yaw = np.pi + np.arctan2(head[0], head[1])
             rot = [0, np.sin(0.5 * yaw), 0, np.cos(0.5 * yaw)]
+        if self.collision_enabled:
+            pos = self.sim.step_filter(pos, pos)
         self.obs = self.sim.get_observations_at(pos, rot, True)
 
-    def move_agent(self, forward=0, right=0):
+    def translate_agent(self, forward=0, right=0):
         if forward == 0 and right == 0:
             return
         s = self.sim.get_agent_state()
         q = quat(0, right, 0, -forward)
         move = s.rotation * q * s.rotation.conjugate()
         pos = s.position + move.vec
+        if self.collision_enabled:
+            pos = self.sim.step_filter(s.position, pos)
         self.obs = self.sim.get_observations_at(pos, s.rotation, True)
+
+    def rotate_agent(self, angle):
+        s = self.sim.get_agent_state()
+        angle = np.radians(angle)
+        q = quat(np.cos(0.5 * angle), 0, np.sin(0.5 * angle), 0)
+        rot = q * s.rotation
+        if self.collision_enabled:
+            pos = self.sim.step_filter(s.position, s.position)
+        else:
+            pos = s.position
+        self.obs = self.sim.get_observations_at(pos, rot, True)
 
     def project_pos_to_map(self, pos):
         return ((pos[::2] - self.map_origin) / self.map_resolution).astype(np.int64)
@@ -133,11 +153,15 @@ class BaseSimulatorViewer:
         cv2.imshow(self.map_win_name, self.draw_map())
         cv2.imshow(self.obs_win_name, self.draw_obs())
 
+    def time_update(self, dt):
+        pass
+
     def run(self):
         self.running = True
         self.update()
         while self.running:
-            c = cv2.waitKey(30)
+            c = cv2.waitKey(self.CV2_WAIT_TIME)
+            self.time_update(self.CV2_WAIT_TIME)
             if self.on_key_press(c):
                 self.update()
 
