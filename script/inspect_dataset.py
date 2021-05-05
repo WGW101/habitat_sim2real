@@ -1,3 +1,4 @@
+import sys
 import cv2
 from quaternion import quaternion as quat
 import habitat
@@ -83,6 +84,6 @@ class DatasetInspector(BaseSimulatorViewer):
 
 
 if __name__ == "__main__":
-    cfg = habitat.get_config("configs/locobot_pointnav_citi_sim.yaml")
+    cfg = habitat.get_config("configs/locobot_pointnav_citi_sim.yaml", sys.argv[1:])
     viewer = DatasetInspector(cfg)
     viewer.run()
