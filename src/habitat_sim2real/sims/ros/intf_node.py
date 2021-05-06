@@ -1,5 +1,4 @@
 import threading
-import math
 import numpy
 
 import rospy
@@ -9,7 +8,7 @@ import tf2_ros
 import tf2_geometry_msgs
 import actionlib
 
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, TransformStamped
 from sensor_msgs.msg import Image
 from nav_msgs.msg import OccupancyGrid
 from nav_msgs.srv import GetPlan
@@ -41,8 +40,11 @@ class HabitatInterfaceROSNode:
         self.has_first_images = threading.Event()
 
         self.map_sub = rospy.Subscriber(cfg.MAP_TOPIC, OccupancyGrid, self.on_map)
-        self.map_buffer = None
-        self.map_buffer_lock = threading.Lock()
+        self.map_resolution = None
+        self.map_origin_transform = None
+        self.map_grid = None
+        self.map_free_points = None
+        self.map_lock = threading.Lock()
         self.has_first_map = threading.Event()
 
         self.tf_buffer = tf2_ros.Buffer()
@@ -79,6 +81,8 @@ class HabitatInterfaceROSNode:
         self.collided_lock = threading.Lock()
         self.collided = False
 
+        self.rng = numpy.random.default_rng()
+
     def on_img(self, color_img_msg, depth_img_msg):
         try:
             raw_color = self.bridge.imgmsg_to_cv2(color_img_msg, "passthrough")
@@ -96,25 +100,53 @@ class HabitatInterfaceROSNode:
             return self.raw_images_buffer
 
     def on_map(self, occ_grid_msg):
+        try:
+            origin = self.tf_buffer.transform(occ_grid_msg.info.origin,
+                                              self.cfg.TF_HABITAT_REF_FRAME,
+                                              self.tf_timeout)
+        except (tf2_ros.LookupException,
+                tf2_ros.ConnectivityException,
+                tf2_ros.ExtrapolationException):
+            return
+        transform = TransformStamped()
+        transform.header.frame_id = self.cfg.TF_HABITAT_REF_FRAME
+        transform.child_frame_id = "map_origin"
+        transform.transform.translation.x = origin.position.x
+        transform.transform.translation.y = origin.position.y
+        transform.transform.translation.z = origin.position.z
+        transform.transform.rotation.x = origin.orientation.x
+        transform.transform.rotation.y = origin.orientation.y
+        transform.transform.rotation.z = origin.orientation.z
+        transform.transform.rotation.w = origin.orientation.w
+
         grid = numpy.array(occ_grid_msg.data).reshape(occ_grid_msg.info.height,
                                                       occ_grid_msg.info.width)
-        cell_size = occ_grid_msg.info.resolution
-        origin_pos = (occ_grid_msg.info.origin.position.x,
-                      occ_grid_msg.info.origin.position.y,
-                      occ_grid_msg.info.origin.position.z)
-        origin_rot = (occ_grid_msg.info.origin.orientation.x,
-                      occ_grid_msg.info.origin.orientation.y,
-                      occ_grid_msg.info.origin.orientation.z,
-                      occ_grid_msg.info.origin.orientation.w)
-        with self.map_buffer_lock:
-            self.map_buffer = (grid, cell_size, origin_pos, origin_rot)
+        free_points = np.stack(np.nonzero(grid < self.cfg.MAP_FREE_THRESH & grid > -1), -1)
+
+        with self.map_lock:
+            self.map_resolution = occ_grid_msg.info.resolution
+            self.map_origin_transform = transform
+            self.map_grid = grid
+            self.map_free_points = free_points
         self.has_first_map.set()
 
-    def get_map(self):
+    def get_map_grid(self):
         if not self.has_first_map.wait(self.cfg.GETTER_TIMEOUT):
             raise RuntimeError("Timed out waiting for map.")
-        with self.map_buffer_lock:
-            return self.map_buffer
+        with self.map_lock:
+            return self.map_grid
+
+    def sample_free_point(self):
+        if not self.has_first_map.wait(self.cfg.GETTER_TIMEOUT):
+            raise RuntimeError("Timed out waiting for map.")
+        with self.map_lock:
+            pt = self.rng.choice(self.map_free_points) * self.map_resolution
+            pose = PoseStamped()
+            pose.pose.position.x = pt[1]
+            pose.pose.position.y = pt[0]
+            pose.pose.orientation.w = 1
+            pose = tf2_geometry_msgs.do_transform_pose(pose, self.map_origin_transform)
+        return [pose.pose.position.x, pose.pose.position.y, pose.pose.position.z]
 
     def on_bump(self, bump_msg):
         if bump_msg.state == BumperEvent.PRESSED:
@@ -132,9 +164,9 @@ class HabitatInterfaceROSNode:
 
     def get_robot_pose(self):
         try:
-            trans = self.tf_buffer.lookup_transform(self.cfg.TF_REF_FRAME,
-                                                    self.cfg.TF_ROBOT_FRAME,
-                                                    rospy.Time(0))
+            trans = self.tf_buffer.lookup_transform(self.cfg.TF_HABITAT_REF_FRAME,
+                                                    self.cfg.TF_HABITAT_ROBOT_FRAME,
+                                                    rospy.Time.now(), self.tf_timeout)
         except (tf2_ros.LookupException,
                 tf2_ros.ConnectivityException,
                 tf2_ros.ExtrapolationException):
@@ -146,22 +178,25 @@ class HabitatInterfaceROSNode:
              trans.transform.rotation.z, trans.transform.rotation.w)
         return p, q
 
-    def get_distance(self, source, target):
-        start = PoseStamped()
-        start.header.stamp = rospy.Time.now()
-        start.header.frame_id = self.cfg.TF_REF_FRAME
-        start.pose.position.x = source[0]
-        start.pose.position.y = source[1]
-        start.pose.position.z = source[2]
-        start.pose.orientation.w = 1.0
+    def _make_pose_stamped(self, pos, rot=None):
+        pose = PoseStamped()
+        pose.header.stamp = rospy.Time.now()
+        pose.header.frame_id = self.cfg.TF_HABITAT_REF_FRAME
+        pose.pose.position.x = pos[0]
+        pose.pose.position.y = pos[1]
+        pose.pose.position.z = pos[2]
+        if rot is None:
+            pose.pose.orientation.w = 1
+        else:
+            pose.pose.orientation.x = rot[0]
+            pose.pose.orientation.y = rot[1]
+            pose.pose.orientation.z = rot[2]
+            pose.pose.orientation.w = rot[3]
+        return pose
 
-        goal = PoseStamped()
-        goal.header.stamp = rospy.Time.now()
-        goal.header.frame_id = self.cfg.TF_REF_FRAME
-        goal.pose.position.x = target[0]
-        goal.pose.position.y = target[1]
-        goal.pose.position.z = target[2]
-        goal.pose.orientation.w = 1.0
+    def get_distance(self, src, dst):
+        start = self._make_pose_stamped(src)
+        goal = self._make_pose_stamped(dst)
 
         res = self.get_plan_proxy(start, goal, self.cfg.MOVE_BASE_PLAN_TOL)
         if res.plan.poses:
@@ -171,11 +206,11 @@ class HabitatInterfaceROSNode:
             for pose in res.plan.poses[1:]:
                 x = pose.pose.position.x
                 y = pose.pose.position.y
-                dist += math.sqrt((x - prv_x)**2 + (y - prv_y)**2)
+                dist += numpy.sqrt((x - prv_x)**2 + (y - prv_y)**2)
                 prv_x, prv_y = x, y
             return dist
         else:
-            return None
+            return numpy.inf
 
     def set_camera_tilt(self, tilt):
         self.tilt_reached_event.clear()
@@ -199,35 +234,34 @@ class HabitatInterfaceROSNode:
                     self.tilt_reached_event.set()
                     break
 
-    def move_to_relative(self, x, y, theta):
-        return self._move_to(x, y, theta, self.cfg.TF_ROBOT_FRAME)
+    def move_to_relative(self, forward=0, turn=0):
+        if forward == 0 and turn == 0:
+            return True
+        goal = PoseStamped()
+        goal.header.stamp = rospy.Time.now()
+        goal.header.frame_id = self.cfg.TF_ROBOT_FRAME
+        goal.pose.position.x = forward
+        goal.pose.orientation.z = numpy.sin(0.5 * turn)
+        goal.pose.orientation.w = numpy.cos(0.5 * turn)
+        return self._move_to(goal)
 
-    def move_to_absolute(self, x, y, theta):
-        return self._move_to(x, y, theta, self.cfg.TF_REF_FRAME)
+    def move_to_absolute(self, pos, rot):
+        goal = self._make_pose_stamped(pos, rot)
+        return self._move_to(goal)
 
-    def _move_to(self, x, y, theta, frame_id):
-        goal = MoveBaseGoal()
-        goal.target_pose.header.stamp = rospy.Time.now()
-        goal.target_pose.header.frame_id = frame_id
-        goal.target_pose.pose.position.x = x
-        goal.target_pose.pose.position.y = y
-        goal.target_pose.pose.orientation.z = numpy.sin(0.5 * theta)
-        goal.target_pose.pose.orientation.w = numpy.cos(0.5 * theta)
-        if frame_id != self.cfg.TF_REF_FRAME:
-            try:
-                goal = self.tf_buffer.transform(goal, self.cfg.TF_REF_FRAME, self.tf_timeout)
-            except (tf2_ros.LookupException,
-                    tf2_ros.ConnectivityException,
-                    tf2_ros.ExtrapolationException):
-                return False
+    def _move_to(self, goal):
+        try:
+            goal = self.tf_buffer.transform(goal, self.cfg.TF_REF_FRAME, self.tf_timeout)
+        except (tf2_ros.LookupException,
+                tf2_ros.ConnectivityException,
+                tf2_ros.ExtrapolationException):
+            return False
         self.move_base_client.send_goal(goal)
         return self.move_base_client.wait_for_result()
 
-    def publish_episode_goal(self, x, y):
-        pose = PoseStamped()
-        pose.header.stamp = rospy.Time.now()
-        pose.header.frame_id = self.cfg.TF_REF_FRAME
-        pose.pose.position.x = x
-        pose.pose.position.y = y
-        pose.pose.position.z = 0
+    def publish_episode_goal(self, pos):
+        pose = self._make_pose_stamped(pos)
         self.episode_goal_pub.publish(pose)
+
+    def seed_rng(self, seed):
+        self.rng = numpy.random.default_rng(seed)
