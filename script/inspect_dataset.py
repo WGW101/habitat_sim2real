@@ -6,7 +6,7 @@ from habitat_sim2real import BaseSimulatorViewer
 
 
 class DatasetInspector(BaseSimulatorViewer):
-    MAX_EP_ITER_FREQ = 30
+    MAX_EP_ITER_FREQ = 50
     MIN_EP_ITER_FREQ = 1
     CV2_WAIT_TIME=1
 

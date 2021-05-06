@@ -1,3 +1,4 @@
+from copy import deepcopy
 import numpy
 
 import rospy
@@ -23,8 +24,10 @@ class MapPublisher(BaseSimulatorViewer):
         occ_grid_msg.info.resolution = self.map_resolution.mean()
         occ_grid_msg.info.width = self.map_size[0]
         occ_grid_msg.info.height = self.map_size[1]
-        occ_grid_msg.info.origin.position.x = self.map_origin[1]
-        occ_grid_msg.info.origin.position.y = self.map_origin[0]
+        occ_grid_msg.info.origin.position.x = -self.map_origin[1]
+        occ_grid_msg.info.origin.position.y = -self.map_origin[0]
+        occ_grid_msg.info.origin.orientation.z = 1
+        occ_grid_msg.info.origin.orientation.w = 0
 
         map_pix_to_occ_prob = numpy.array([-1, 0, 100], dtype=numpy.int8)
         occ_grid_msg.data = map_pix_to_occ_prob[self.raw_map.T].flatten().tolist()
@@ -41,21 +44,16 @@ class MapPublisher(BaseSimulatorViewer):
 
         map_tf = TransformStamped()
         map_tf.header.stamp = rospy.Time.now()
-        map_tf.header.frame_id = "map"
-        map_tf.child_frame_id = "habitat_map"
-        map_tf.transform.rotation.x = 0.5
+        map_tf.header.frame_id = "habitat_map"
+        map_tf.child_frame_id = "map"
+        map_tf.transform.rotation.x = -0.5
         map_tf.transform.rotation.y = 0.5
         map_tf.transform.rotation.z = 0.5
         map_tf.transform.rotation.w = 0.5
 
-        base_tf = TransformStamped()
-        base_tf.header.stamp = rospy.Time.now()
+        base_tf = deepcopy(map_tf)
         base_tf.header.frame_id = "habitat_base_footprint"
         base_tf.child_frame_id = "base_footprint"
-        base_tf.transform.rotation.x = -0.5
-        base_tf.transform.rotation.y = 0.5
-        base_tf.transform.rotation.z = 0.5
-        base_tf.transform.rotation.w = 0.5
 
         static_tf_broadcast.sendTransform([map_tf, base_tf])
 

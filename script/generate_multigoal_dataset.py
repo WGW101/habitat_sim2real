@@ -24,7 +24,7 @@ DEFAULT_ARGS = {"config_path": "configs/locobot_multigoal_pointnav_citi_sim.yaml
 N_POINTS = 6000
 MAX_RETRIES = 10
 MIN_ISLAND_RADIUS = 1.5
-EPS = 1e-5
+EPS = 0.1
 
 def parse_args():
     parser = argparse.ArgumentParser()
