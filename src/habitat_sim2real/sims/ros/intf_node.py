@@ -1,11 +1,13 @@
 import threading
 import numpy
+import logging
 
 import rospy
 import message_filters
 import cv_bridge
 import tf2_ros
 import tf2_geometry_msgs
+from tf_conversions.transformations import quaternion_multiply
 import actionlib
 
 from geometry_msgs.msg import PoseStamped, TransformStamped
@@ -29,6 +31,10 @@ class HabitatInterfaceROSNode:
             raise RuntimeError("Unable to connect to ROS master.")
         rospy.init_node(cfg.NODE_NAME)
 
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listerner = tf2_ros.TransformListener(self.tf_buffer)
+        self.tf_timeout = rospy.Duration(self.cfg.TF_TIMEOUT)
+
         self.color_sub = message_filters.Subscriber(cfg.COLOR_IMAGE_TOPIC, Image)
         self.depth_sub = message_filters.Subscriber(cfg.DEPTH_IMAGE_TOPIC, Image)
         self.img_sync = message_filters.TimeSynchronizer([self.color_sub, self.depth_sub],
@@ -47,9 +53,9 @@ class HabitatInterfaceROSNode:
         self.map_lock = threading.Lock()
         self.has_first_map = threading.Event()
 
-        self.tf_buffer = tf2_ros.Buffer()
-        self.tf_listerner = tf2_ros.TransformListener(self.tf_buffer)
-        self.tf_timeout = rospy.Duration(self.cfg.TF_TIMEOUT)
+        self.bump_sub = rospy.Subscriber(cfg.BUMPER_TOPIC, BumperEvent, self.on_bump)
+        self.collided_lock = threading.Lock()
+        self.collided = False
 
         self.move_base_client = actionlib.SimpleActionClient(cfg.MOVE_BASE_ACTION_SERVER,
                                                              MoveBaseAction)
@@ -77,17 +83,14 @@ class HabitatInterfaceROSNode:
         self.episode_goal_pub = rospy.Publisher("habitat_episode_goal", PoseStamped,
                                                 queue_size=1)
 
-        self.bump_sub = rospy.Subscriber(cfg.BUMPER_TOPIC, BumperEvent, self.on_bump)
-        self.collided_lock = threading.Lock()
-        self.collided = False
-
         self.rng = numpy.random.default_rng()
 
     def on_img(self, color_img_msg, depth_img_msg):
         try:
             raw_color = self.bridge.imgmsg_to_cv2(color_img_msg, "passthrough")
             raw_depth = self.bridge.imgmsg_to_cv2(depth_img_msg, "passthrough")
-        except cv_bridge.CvBridgeError:
+        except cv_bridge.CvBridgeError as e:
+            logging.warn(e)
             return
         with self.img_buffer_lock:
             self.raw_images_buffer = (raw_color, raw_depth)
@@ -101,27 +104,30 @@ class HabitatInterfaceROSNode:
 
     def on_map(self, occ_grid_msg):
         try:
-            origin = self.tf_buffer.transform(occ_grid_msg.info.origin,
+            origin = PoseStamped(header=occ_grid_msg.header, pose=occ_grid_msg.info.origin)
+            origin = self.tf_buffer.transform(origin,
                                               self.cfg.TF_HABITAT_REF_FRAME,
                                               self.tf_timeout)
         except (tf2_ros.LookupException,
                 tf2_ros.ConnectivityException,
-                tf2_ros.ExtrapolationException):
+                tf2_ros.ExtrapolationException) as e:
+            logging.warn(e)
             return
         transform = TransformStamped()
         transform.header.frame_id = self.cfg.TF_HABITAT_REF_FRAME
         transform.child_frame_id = "map_origin"
-        transform.transform.translation.x = origin.position.x
-        transform.transform.translation.y = origin.position.y
-        transform.transform.translation.z = origin.position.z
-        transform.transform.rotation.x = origin.orientation.x
-        transform.transform.rotation.y = origin.orientation.y
-        transform.transform.rotation.z = origin.orientation.z
-        transform.transform.rotation.w = origin.orientation.w
+        transform.transform.translation.x = origin.pose.position.x
+        transform.transform.translation.y = origin.pose.position.y
+        transform.transform.translation.z = origin.pose.position.z
+        transform.transform.rotation.x = origin.pose.orientation.x
+        transform.transform.rotation.y = origin.pose.orientation.y
+        transform.transform.rotation.z = origin.pose.orientation.z
+        transform.transform.rotation.w = origin.pose.orientation.w
 
         grid = numpy.array(occ_grid_msg.data).reshape(occ_grid_msg.info.height,
                                                       occ_grid_msg.info.width)
-        free_points = np.stack(np.nonzero(grid < self.cfg.MAP_FREE_THRESH & grid > -1), -1)
+        free_points = numpy.stack(numpy.nonzero((grid < self.cfg.MAP_FREE_THRESH)
+                                                & (grid > -1)), -1)
 
         with self.map_lock:
             self.map_resolution = occ_grid_msg.info.resolution
@@ -166,10 +172,11 @@ class HabitatInterfaceROSNode:
         try:
             trans = self.tf_buffer.lookup_transform(self.cfg.TF_HABITAT_REF_FRAME,
                                                     self.cfg.TF_HABITAT_ROBOT_FRAME,
-                                                    rospy.Time.now(), self.tf_timeout)
+                                                    rospy.Time(0), self.tf_timeout)
         except (tf2_ros.LookupException,
                 tf2_ros.ConnectivityException,
-                tf2_ros.ExtrapolationException):
+                tf2_ros.ExtrapolationException) as e:
+            logging.warn(e)
             return None, None
         p = (trans.transform.translation.x,
              trans.transform.translation.y,
@@ -192,11 +199,25 @@ class HabitatInterfaceROSNode:
             pose.pose.orientation.y = rot[1]
             pose.pose.orientation.z = rot[2]
             pose.pose.orientation.w = rot[3]
+        # we built pose of hab_robot_frame in hab_ref_frame
+        try:
+            pose = self.tf_buffer.transform(pose, self.cfg.TF_REF_FRAME, self.tf_timeout)
+        except (tf2_ros.LookupException,
+                tf2_ros.ConnectivityException,
+                tf2_ros.ExtrapolationException) as e:
+            logging.warn(e)
+            return None
+        # we get pose of hab_robot_frame in ref_frame...
+        # we need pose of robot_frame in ref_frame...
         return pose
 
     def get_distance(self, src, dst):
         start = self._make_pose_stamped(src)
+        if start is None:
+            return np.inf
         goal = self._make_pose_stamped(dst)
+        if goal is None:
+            return np.inf
 
         res = self.get_plan_proxy(start, goal, self.cfg.MOVE_BASE_PLAN_TOL)
         if res.plan.poses:
@@ -238,24 +259,28 @@ class HabitatInterfaceROSNode:
         if forward == 0 and turn == 0:
             return True
         goal = PoseStamped()
-        goal.header.stamp = rospy.Time.now()
+        goal.header.stamp = rospy.Time(0)
         goal.header.frame_id = self.cfg.TF_ROBOT_FRAME
         goal.pose.position.x = forward
         goal.pose.orientation.z = numpy.sin(0.5 * turn)
         goal.pose.orientation.w = numpy.cos(0.5 * turn)
-        return self._move_to(goal)
-
-    def move_to_absolute(self, pos, rot):
-        goal = self._make_pose_stamped(pos, rot)
-        return self._move_to(goal)
-
-    def _move_to(self, goal):
         try:
             goal = self.tf_buffer.transform(goal, self.cfg.TF_REF_FRAME, self.tf_timeout)
         except (tf2_ros.LookupException,
                 tf2_ros.ConnectivityException,
-                tf2_ros.ExtrapolationException):
+                tf2_ros.ExtrapolationException) as e:
+            logging.warn(e)
             return False
+        return self._move_to(goal)
+
+    def move_to_absolute(self, pos, rot=None):
+        goal = self._make_pose_stamped(pos, rot)
+        if goal is None:
+            return False
+        return self._move_to(goal)
+
+    def _move_to(self, target):
+        goal = MoveBaseGoal(target_pose=target)
         self.move_base_client.send_goal(goal)
         return self.move_base_client.wait_for_result()
 
