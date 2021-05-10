@@ -203,9 +203,9 @@ class HabitatInterfaceROSNode:
         pose = PoseStamped()
         pose.header.stamp = rospy.Time.now()
         pose.header.frame_id = self.cfg.TF_HABITAT_REF_FRAME
-        pose.pose.position.x = pos[0] - tf.transform.translation.x
-        pose.pose.position.y = pos[1] - tf.transform.translation.y
-        pose.pose.position.z = pos[2] - tf.transform.translation.z
+        pose.pose.position.x = pos[0] + tf.transform.translation.x
+        pose.pose.position.y = pos[1] + tf.transform.translation.y
+        pose.pose.position.z = pos[2] + tf.transform.translation.z
 
         tf_q = (tf.transform.rotation.x, tf.transform.rotation.y,
                 tf.transform.rotation.z, tf.transform.rotation.w)
