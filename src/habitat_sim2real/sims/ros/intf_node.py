@@ -7,7 +7,7 @@ import message_filters
 import cv_bridge
 import tf2_ros
 import tf2_geometry_msgs
-from tf_conversions.transformations import quaternion_multiply
+import tf_conversions
 import actionlib
 
 from geometry_msgs.msg import PoseStamped, TransformStamped
@@ -186,20 +186,36 @@ class HabitatInterfaceROSNode:
         return p, q
 
     def _make_pose_stamped(self, pos, rot=None):
+        if rot is None:
+            rot = (0, 0, 0, 1)
+        # we get pose of hab_robot_frame in hab_ref_frame
+
+        # we build pose of robot_frame in hab_ref_frame
+        try:
+            tf = self.tf_buffer.lookup_transform(self.cfg.TF_HABITAT_ROBOT_FRAME,
+                                                 self.cfg.TF_ROBOT_FRAME,
+                                                 rospy.Time(0), self.tf_timeout)
+        except (tf2_ros.LookupException,
+                tf2_ros.ConnectivityException,
+                tf2_ros.ExtrapolationException) as e:
+            logging.warn(e)
+            return None
         pose = PoseStamped()
         pose.header.stamp = rospy.Time.now()
         pose.header.frame_id = self.cfg.TF_HABITAT_REF_FRAME
-        pose.pose.position.x = pos[0]
-        pose.pose.position.y = pos[1]
-        pose.pose.position.z = pos[2]
-        if rot is None:
-            pose.pose.orientation.w = 1
-        else:
-            pose.pose.orientation.x = rot[0]
-            pose.pose.orientation.y = rot[1]
-            pose.pose.orientation.z = rot[2]
-            pose.pose.orientation.w = rot[3]
-        # we built pose of hab_robot_frame in hab_ref_frame
+        pose.pose.position.x = pos[0] - tf.transform.translation.x
+        pose.pose.position.y = pos[1] - tf.transform.translation.y
+        pose.pose.position.z = pos[2] - tf.transform.translation.z
+
+        tf_q = (tf.transform.rotation.x, tf.transform.rotation.y,
+                tf.transform.rotation.z, tf.transform.rotation.w)
+        rot = tf_conversions.transformations.quaternion_multiply(rot, tf_q)
+        pose.pose.orientation.x = rot[0]
+        pose.pose.orientation.y = rot[1]
+        pose.pose.orientation.z = rot[2]
+        pose.pose.orientation.w = rot[3]
+
+        # we transform it to ref_frame
         try:
             pose = self.tf_buffer.transform(pose, self.cfg.TF_REF_FRAME, self.tf_timeout)
         except (tf2_ros.LookupException,
@@ -207,8 +223,6 @@ class HabitatInterfaceROSNode:
                 tf2_ros.ExtrapolationException) as e:
             logging.warn(e)
             return None
-        # we get pose of hab_robot_frame in ref_frame...
-        # we need pose of robot_frame in ref_frame...
         return pose
 
     def get_distance(self, src, dst):
