@@ -36,6 +36,7 @@ def parse_args():
     parser.add_argument("--min-dist-ratio", type=float)
     parser.add_argument("--seed", "-s", type=int)
     parser.add_argument("--if-exist", choices=["override", "append", "exit"])
+    parser.add_argument("--create-cycle", action="store_true")
     parser.add_argument("extra_cfg", nargs=argparse.REMAINDER)
 
     parser.set_defaults(**DEFAULT_ARGS)
