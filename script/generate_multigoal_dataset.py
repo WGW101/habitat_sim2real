@@ -36,7 +36,7 @@ def parse_args():
     parser.add_argument("--min-dist-ratio", type=float)
     parser.add_argument("--seed", "-s", type=int)
     parser.add_argument("--if-exist", choices=["override", "append", "exit"])
-    parser.add_argument("--create-cycle", action="store_true")
+    parser.add_argument("--cyclic", action="store_true")
     parser.add_argument("extra_cfg", nargs=argparse.REMAINDER)
 
     parser.set_defaults(**DEFAULT_ARGS)
@@ -90,9 +90,10 @@ def main(args):
 
     init_len = len(dataset.episodes)
     ep_cnt = init_len
+    prv = None
     with tqdm.tqdm(total=args.n_episodes) as progress:
         while len(dataset.episodes) < init_len + args.n_episodes:
-            src = rng.choice(points)
+            src = prv if args.cyclic and prv is not None else rng.choice(points)
             destinations = []
             prv = src
             tot_d = 0
