@@ -18,7 +18,7 @@ class ROSEnv(Env):
         self.episode_count = 0
 
     def close(self):
-        out_path = self._config.DATASET.DATA_PATH
+        out_path = self._config.DATASET.DATA_PATH.format(split=self._config.DATASET.SPLIT)
         out_base, out_ext = os.path.splitext(out_path)
         suffix = itertools.count()
         while os.path.exists(out_path):

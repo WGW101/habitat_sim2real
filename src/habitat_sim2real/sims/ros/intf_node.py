@@ -10,7 +10,7 @@ import tf2_geometry_msgs
 import tf_conversions
 import actionlib
 
-from geometry_msgs.msg import PoseStamped, TransformStamped
+from geometry_msgs.msg import PoseStamped, TransformStamped, PointStamped
 from sensor_msgs.msg import Image
 from nav_msgs.msg import OccupancyGrid
 from nav_msgs.srv import GetPlan
@@ -85,6 +85,10 @@ class HabitatInterfaceROSNode:
 
         self.rng = numpy.random.default_rng()
 
+        self.pt_sub = rospy.Subscriber("/clicked_point", PointStamped, self.on_point)
+        self.last_point = None
+        self.has_new_point = threading.Event()
+
     def on_img(self, color_img_msg, depth_img_msg):
         try:
             raw_color = self.bridge.imgmsg_to_cv2(color_img_msg, "passthrough")
@@ -142,17 +146,38 @@ class HabitatInterfaceROSNode:
         with self.map_lock:
             return self.map_grid
 
+    def on_point(self, pt_msg):
+        try:
+            pt = self.tf_buffer.transform(pt_msg, self.cfg.TF_REF_FRAME, self.tf_timeout)
+        except (tf2_ros.LookupException,
+                tf2_ros.ConnectivityException,
+                tf2_ros.ExtrapolationException) as e:
+            logging.warn(e)
+            return
+        with self.point_lock:
+            self.last_point = [pt.point.x, pt.point.y, pt.point.z]
+        self.has_new_point.set()
+
     def sample_free_point(self):
-        if not self.has_first_map.wait(self.cfg.GETTER_TIMEOUT):
-            raise RuntimeError("Timed out waiting for map.")
-        with self.map_lock:
-            pt = self.rng.choice(self.map_free_points) * self.map_resolution
-            pose = PoseStamped()
-            pose.pose.position.x = pt[1]
-            pose.pose.position.y = pt[0]
-            pose.pose.orientation.w = 1
-            pose = tf2_geometry_msgs.do_transform_pose(pose, self.map_origin_transform)
-        return [pose.pose.position.x, pose.pose.position.y, pose.pose.position.z]
+        if self.cfg.SAMPLE_NAV_PT_METHOD == "RVIZ":
+            print("Please use rviz to select a navigable point on the map")
+            self.has_new_point.wait()
+            with self.point_lock:
+                pt = self.last_point
+            print("Using point:", pt)
+            self.has_new_point.clear()
+            return pt
+        else:
+            if not self.has_first_map.wait(self.cfg.GETTER_TIMEOUT):
+                raise RuntimeError("Timed out waiting for map.")
+            with self.map_lock:
+                pt = self.rng.choice(self.map_free_points) * self.map_resolution
+                pose = PoseStamped()
+                pose.pose.position.x = pt[1]
+                pose.pose.position.y = pt[0]
+                pose.pose.orientation.w = 1
+                pose = tf2_geometry_msgs.do_transform_pose(pose, self.map_origin_transform)
+            return [pose.pose.position.x, pose.pose.position.y, pose.pose.position.z]
 
     def on_bump(self, bump_msg):
         if bump_msg.state == BumperEvent.PRESSED:
