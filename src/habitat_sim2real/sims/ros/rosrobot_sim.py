@@ -43,6 +43,9 @@ class AgentState:
         self.position = numpy.array(p)
         self.rotation = quaternion.quaternion(q[3], *q[:3])
 
+    def __repr__(self):
+        return "AgentState(position={}, rotation={})".format(self.position, self.rotation)
+
 
 @habitat.registry.register_simulator(name="ROS-Robot-v0")
 class ROSRobot(Simulator):
@@ -79,7 +82,7 @@ class ROSRobot(Simulator):
             if not (numpy.allclose(pos, state.position)
                     and quaternion.isclose(rot, state.rotation)):
                 self.intf_node.move_to_absolute(pos, rot)
-        self.intf_node.set_camera_tilt(self.config.RGB_SENSOR.ROTATION[0])
+        self.intf_node.set_camera_tilt(self.config.RGB_SENSOR.ORIENTATION[0])
         self.intf_node.clear_collided()
         self.previous_step_collided = False
         raw_images = self.intf_node.get_raw_images()
@@ -140,11 +143,11 @@ class ROSRobot(Simulator):
 
     @property
     def up_vector(self):
-        return np.array([0.0, 1.0, 0.0])
+        return numpy.array([0.0, 1.0, 0.0])
 
     @property
     def forward_vector(self):
-        return np.array([0.0, 0.0, -1.0])
+        return numpy.array([0.0, 0.0, -1.0])
 
     def publish_episode_goal(self, goal_pos):
         self.intf_node.publish_episode_goal(goal_pos)
