@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 import time
 from gym import spaces
 
@@ -17,7 +17,7 @@ class JetbotRGBSensor(RGBSensor):
         return spaces.Box(low=0,
                           high=255,
                           shape=(self.config.HEIGHT, self.config.WIDTH, 3),
-                          dtype=numpy.uint8)
+                          dtype=np.uint8)
 
     def get_observation(self):
         return self.cam.value[:, :, ::-1] # BGR to RGB
@@ -57,11 +57,11 @@ class Jetbot(Simulator):
         elif action == 2: # TURN_LEFT
             left  = -self.left_motor_coef * self.ang_speed
             right = self.right_motor_coef * self.ang_speed
-            dur   = numpy.radians(self.config.TURN_ANGLE) / self.ang_speed
+            dur   = np.radians(self.config.TURN_ANGLE) / self.ang_speed
         elif action == 3: # TURN_RIGHT
             left  = self.left_motor_coef * self.ang_speed
             right = -self.right_motor_coef * self.ang_speed
-            dur   = numpy.radians(self.config.TURN_ANGLE) / self.ang_speed
+            dur   = np.radians(self.config.TURN_ANGLE) / self.ang_speed
         self.robot.set_motors(left, right)
         time.sleep(dur)
         self.robot.stop()

@@ -1,5 +1,5 @@
 import threading
-import numpy
+import numpy as np
 import logging
 
 import rospy
@@ -83,7 +83,7 @@ class HabitatInterfaceROSNode:
         self.episode_goal_pub = rospy.Publisher("habitat_episode_goal", PoseStamped,
                                                 queue_size=1)
 
-        self.rng = numpy.random.default_rng()
+        self.rng = np.random.default_rng()
 
         self.pt_sub = rospy.Subscriber("/clicked_point", PointStamped, self.on_point)
         self.last_point = None
@@ -128,10 +128,10 @@ class HabitatInterfaceROSNode:
         transform.transform.rotation.z = origin.pose.orientation.z
         transform.transform.rotation.w = origin.pose.orientation.w
 
-        grid = numpy.array(occ_grid_msg.data).reshape(occ_grid_msg.info.height,
-                                                      occ_grid_msg.info.width)
-        free_points = numpy.stack(numpy.nonzero((grid < self.cfg.MAP_FREE_THRESH)
-                                                & (grid > -1)), -1)
+        grid = np.array(occ_grid_msg.data).reshape(occ_grid_msg.info.height,
+                                                   occ_grid_msg.info.width)
+        free_points = np.stack(np.nonzero((grid < self.cfg.MAP_FREE_THRESH)
+                                          & (grid > -1)), -1)
 
         with self.map_lock:
             self.map_resolution = occ_grid_msg.info.resolution
@@ -266,11 +266,11 @@ class HabitatInterfaceROSNode:
             for pose in res.plan.poses[1:]:
                 x = pose.pose.position.x
                 y = pose.pose.position.y
-                dist += numpy.sqrt((x - prv_x)**2 + (y - prv_y)**2)
+                dist += np.sqrt((x - prv_x)**2 + (y - prv_y)**2)
                 prv_x, prv_y = x, y
             return dist
         else:
-            return numpy.inf
+            return np.inf
 
     def set_camera_tilt(self, tilt):
         self.tilt_reached_event.clear()
@@ -301,8 +301,8 @@ class HabitatInterfaceROSNode:
         goal.header.stamp = rospy.Time(0)
         goal.header.frame_id = self.cfg.TF_ROBOT_FRAME
         goal.pose.position.x = forward
-        goal.pose.orientation.z = numpy.sin(0.5 * turn)
-        goal.pose.orientation.w = numpy.cos(0.5 * turn)
+        goal.pose.orientation.z = np.sin(0.5 * turn)
+        goal.pose.orientation.w = np.cos(0.5 * turn)
         try:
             goal = self.tf_buffer.transform(goal, self.cfg.TF_REF_FRAME, self.tf_timeout)
         except (tf2_ros.LookupException,
@@ -328,4 +328,4 @@ class HabitatInterfaceROSNode:
         self.episode_goal_pub.publish(pose)
 
     def seed_rng(self, seed):
-        self.rng = numpy.random.default_rng(seed)
+        self.rng = np.random.default_rng(seed)
