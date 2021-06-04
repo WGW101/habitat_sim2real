@@ -67,21 +67,7 @@ class BaseSimulatorViewer:
             if y >= self.cfg.RGB_SENSOR.HEIGHT:
                 y -= self.cfg.RGB_SENSOR.HEIGHT
             self.pin_obs = (x, y)
-
-            d = self.obs["depth"][y, x]
-            if self.cfg.DEPTH_SENSOR.NORMALIZE_DEPTH:
-                d = (self.cfg.DEPTH_SENSOR.MAX_DEPTH - self.cfg.DEPTH_SENSOR.MIN_DEPTH) * d \
-                        + self.cfg.DEPTH_SENSOR.MIN_DEPTH
-
-            f = self.cfg.DEPTH_SENSOR.WIDTH \
-                    / np.tan(np.radians(0.5 * self.cfg.DEPTH_SENSOR.HFOV))
-            rel_to_sens = np.array([d * (x - 0.5 * self.cfg.DEPTH_SENSOR.WIDTH) / f,
-                                    d * (0.5 * self.cfg.DEPTH_SENSOR.HEIGHT - y) / f,
-                                    -d])
-
-            s = self.sim.get_agent_state().sensor_states["depth"]
-            abs_pos = (s.rotation * quat(0, *rel_to_sens) * s.rotation.conjugate()).vec \
-                    + s.position
+            abs_pos = self.project_pixel_to_pos(self.pin_obs)
             self.pin_map = self.project_pos_to_map(abs_pos)
             self.update()
 
@@ -141,6 +127,20 @@ class BaseSimulatorViewer:
         else:
             pos = s.position
         self.obs = self.sim.get_observations_at(pos, rot, True)
+
+    def project_pixel_to_pos(self, pix):
+        d = self.obs["depth"][pix[1], pix[0]]
+        if self.cfg.DEPTH_SENSOR.NORMALIZE_DEPTH:
+            d = (self.cfg.DEPTH_SENSOR.MAX_DEPTH - self.cfg.DEPTH_SENSOR.MIN_DEPTH) * d \
+                    + self.cfg.DEPTH_SENSOR.MIN_DEPTH
+
+        dim = np.array([self.cfg.DEPTH_SENSOR.WIDTH, self.cfg.DEPTH_SENSOR.HEIGHT])
+        f = dim[0] / np.tan(np.radians(0.5 * self.cfg.DEPTH_SENSOR.HFOV))
+
+        rel_pos = d * np.array([(pix[0] - 0.5 * dim[0]) / f, (0.5 * dim[1] - pix[1]) / f, -1])
+
+        s = self.sim.get_agent_state().sensor_states["depth"]
+        return (s.rotation * quat(0, *rel_pos) * s.rotation.conjugate()).vec + s.position
 
     def project_pos_to_map(self, pos):
         return ((pos[::2] - self.map_origin) / self.map_resolution).astype(np.int64)
