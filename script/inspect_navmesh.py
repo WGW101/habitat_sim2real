@@ -29,7 +29,7 @@ class NavmeshInspector(BaseSimulatorViewer):
         self.navmesh_settings.agent_radius = sim_cfg.AGENT_0.RADIUS
         self.navmesh_settings.agent_height = sim_cfg.AGENT_0.HEIGHT
 
-    def on_key_press(self, key_code):
+    def on_key(self, key_code):
         update = True
         if key_code == ord('u'):
             self.update_navmesh("agent_max_climb", +0.01)
@@ -42,7 +42,7 @@ class NavmeshInspector(BaseSimulatorViewer):
         elif key_code == ord('o'):
             self.save_navmesh()
         else:
-            update = super().on_key_press(key_code)
+            update = super().on_key(key_code)
         return update
 
     def update_navmesh(self, attr, mod):

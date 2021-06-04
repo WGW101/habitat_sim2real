@@ -24,7 +24,7 @@ class DatasetInspector(BaseSimulatorViewer):
 
         super().__init__(cfg.SIMULATOR)
 
-    def on_key_press(self, key_code):
+    def on_key(self, key_code):
         update = True
         if key_code == ord(' '):
             self.pause_ep_iter = not self.pause_ep_iter
@@ -35,7 +35,7 @@ class DatasetInspector(BaseSimulatorViewer):
         elif key_code == ord('-'):
             self.ep_iter_freq = max(self.MIN_EP_ITER_FREQ, self.ep_iter_freq - 1)
         else:
-            update = super().on_key_press(key_code)
+            update = super().on_key(key_code)
         return update
 
     def step_ep_iter(self):

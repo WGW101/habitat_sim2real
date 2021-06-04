@@ -16,9 +16,10 @@ class BaseSimulatorViewer:
 
         self.map_win_name = win_basename + " - Map"
         cv2.namedWindow(self.map_win_name)
-        cv2.setMouseCallback(self.map_win_name, self.on_mouse)
+        cv2.setMouseCallback(self.map_win_name, self.on_mouse_map)
         self.obs_win_name = win_basename + " - Observations"
         cv2.namedWindow(self.obs_win_name)
+        cv2.setMouseCallback(self.obs_win_name, self.on_mouse_obs)
 
         self.raw_map = get_topdown_map_from_sim(self.sim)
         self.map_img = colorize_topdown_map(self.raw_map)
@@ -41,10 +42,12 @@ class BaseSimulatorViewer:
 
         self.drag_start = None
         self.drag_vec = None
+        self.pin_obs = None
+        self.pin_map = None
         self.running = True
         self.collision_enabled = False
 
-    def on_mouse(self, event, x, y, flags, param):
+    def on_mouse_map(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
             self.drag_start = np.array([x, y]).astype(np.int64)
         elif event == cv2.EVENT_MOUSEMOVE and self.drag_start is not None:
@@ -59,7 +62,30 @@ class BaseSimulatorViewer:
             self.drag_vec = None
             self.update()
 
-    def on_key_press(self, key_code):
+    def on_mouse_obs(self, event, x, y, flags, param):
+        if event == cv2.EVENT_LBUTTONDOWN:
+            if y >= self.cfg.RGB_SENSOR.HEIGHT:
+                y -= self.cfg.RGB_SENSOR.HEIGHT
+            self.pin_obs = (x, y)
+
+            d = self.obs["depth"][y, x]
+            if self.cfg.DEPTH_SENSOR.NORMALIZE_DEPTH:
+                d = (self.cfg.DEPTH_SENSOR.MAX_DEPTH - self.cfg.DEPTH_SENSOR.MIN_DEPTH) * d \
+                        + self.cfg.DEPTH_SENSOR.MIN_DEPTH
+
+            f = self.cfg.DEPTH_SENSOR.WIDTH \
+                    / np.tan(np.radians(0.5 * self.cfg.DEPTH_SENSOR.HFOV))
+            rel_to_sens = np.array([d * (x - 0.5 * self.cfg.DEPTH_SENSOR.WIDTH) / f,
+                                    d * (0.5 * self.cfg.DEPTH_SENSOR.HEIGHT - y) / f,
+                                    -d])
+
+            s = self.sim.get_agent_state().sensor_states["depth"]
+            abs_pos = (s.rotation * quat(0, *rel_to_sens) * s.rotation.conjugate()).vec \
+                    + s.position
+            self.pin_map = self.project_pos_to_map(abs_pos)
+            self.update()
+
+    def on_key(self, key_code):
         update = True
         if key_code == ord('x'):
             self.running = False
@@ -140,6 +166,8 @@ class BaseSimulatorViewer:
         self.draw_agent_on_map(disp)
         if self.drag_vec is not None:
             self.draw_agent_on_map(disp, self.drag_start, self.drag_vec, (0, 255, 0))
+        if self.pin_map is not None:
+            cv2.circle(disp, tuple(self.pin_map), 3, (0, 0, 255))
         return disp
 
     def draw_obs(self):
@@ -147,6 +175,10 @@ class BaseSimulatorViewer:
         disp = np.vstack((self.obs["rgb"][:, :, ::-1], disp_depth))
         if self.scale:
             disp = cv2.resize(disp, None, fx=self.scale, fy=self.scale)
+        if self.pin_obs is not None:
+            cv2.circle(disp, tuple(self.pin_obs), 3, (0, 0, 255))
+            pin2 = (self.pin_obs[0], self.pin_obs[1] + self.cfg.RGB_SENSOR.HEIGHT)
+            cv2.circle(disp, pin2, 3, (0, 0, 255))
         return disp
 
     def update(self):
@@ -162,6 +194,6 @@ class BaseSimulatorViewer:
         while self.running:
             c = cv2.waitKey(self.CV2_WAIT_TIME)
             self.time_update(self.CV2_WAIT_TIME)
-            if self.on_key_press(c):
+            if c > 0 and self.on_key(c):
                 self.update()
 

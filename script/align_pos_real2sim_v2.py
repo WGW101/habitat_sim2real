@@ -35,7 +35,7 @@ class AlignViewer(BaseSimulatorViewer):
         self.pos_offset = None
         self.rot_offset = None
 
-    def on_key_press(self, key_code):
+    def on_key(self, key_code):
         update = True
         if key_code == ord('i'):
             self.obs = self.sim.step(4)
@@ -44,7 +44,7 @@ class AlignViewer(BaseSimulatorViewer):
         elif key_code == ord('c'):
             self.accept_alignment()
         else:
-            update = super().on_key_press(key_code)
+            update = super().on_key(key_code)
         return update
 
     def accept_alignment(self):
