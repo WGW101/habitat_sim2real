@@ -104,16 +104,6 @@ class BaseSimulatorViewer:
             update = False
         return update
 
-    def print_state(self):
-        s = self.sim.get_agent_state()
-        theta = np.degrees(2 * np.tan(s.rotation.y / s.rotation.w)) \
-                if s.rotation.w != 0 else 180
-        print("Agent state: x={:0<+7.3f}, y={:0<+7.3f}, z={:0<+7.3f}, ".format(*s.position) \
-                + ", \u03b8={: >+3.0f}".format(theta))
-        print("Pins:")
-        for pos, _ in self.pins:
-            print("\t- x={:0<+7.3f}, y={:0<+7.3f}, z={:0<+7.3f}, ".format(*pos))
-
     def teleport_agent_on_map(self, pos, head=None):
         pos = self.project_map_to_pos(self.drag_start)
         if head is None:
@@ -164,6 +154,16 @@ class BaseSimulatorViewer:
             if d < 0.5:
                 del self.pins[closest]
                 self.update()
+
+    def print_state(self):
+        s = self.sim.get_agent_state()
+        theta = np.degrees(2 * np.tan(s.rotation.y / s.rotation.w)) \
+                if s.rotation.w != 0 else 180
+        print("Agent state: x={:0<+7.3f}, y={:0<+7.3f}, z={:0<+7.3f}, ".format(*s.position) \
+                + "\u03b8={: >+3.0f}".format(theta))
+        print("Pins:")
+        for pos, _ in self.pins:
+            print("  - x={:0<+7.3f}, y={:0<+7.3f}, z={:0<+7.3f}".format(*pos))
 
     def project_pos_to_map(self, pos):
         return ((pos[::2] - self.map_origin) / self.map_resolution).astype(np.int64)
