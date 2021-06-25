@@ -1,5 +1,10 @@
+import os
+os.environ["GLOG_minloglevel"] = "2"
+os.environ["MAGNUM_LOG"] = "quiet"
+
 from copy import deepcopy
 import numpy
+import logging
 
 import rospy
 from tf2_ros import StaticTransformBroadcaster, TransformBroadcaster
@@ -7,6 +12,7 @@ from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import OccupancyGrid
 
 import habitat
+habitat.logger.setLevel(logging.ERROR)
 from habitat_sim2real import BaseSimulatorViewer
 
 
@@ -22,8 +28,8 @@ class MapPublisher(BaseSimulatorViewer):
         occ_grid_msg.header.frame_id = "map"
         occ_grid_msg.info.map_load_time = rospy.Time.now()
         occ_grid_msg.info.resolution = self.map_resolution.mean()
-        occ_grid_msg.info.width = self.map_size[0]
-        occ_grid_msg.info.height = self.map_size[1]
+        occ_grid_msg.info.width = self.map_size[1]
+        occ_grid_msg.info.height = self.map_size[0]
         occ_grid_msg.info.origin.position.x = -self.map_origin[1]
         occ_grid_msg.info.origin.position.y = -self.map_origin[0]
         occ_grid_msg.info.origin.orientation.z = 1
