@@ -3,7 +3,7 @@ os.environ["GLOG_minloglevel"] = "2"
 os.environ["MAGNUM_LOG"] = "quiet"
 
 from copy import deepcopy
-import numpy
+import numpy as np
 import logging
 
 import rospy
@@ -30,13 +30,14 @@ class MapPublisher(BaseSimulatorViewer):
         occ_grid_msg.info.resolution = self.map_resolution.mean()
         occ_grid_msg.info.width = self.map_size[1]
         occ_grid_msg.info.height = self.map_size[0]
-        occ_grid_msg.info.origin.position.x = -self.map_origin[1]
-        occ_grid_msg.info.origin.position.y = -self.map_origin[0]
-        occ_grid_msg.info.origin.orientation.z = 1
-        occ_grid_msg.info.origin.orientation.w = 0
+        occ_grid_msg.info.origin.position.x = -self.map_origin[1] \
+                - self.map_resolution[1] * self.map_size[1]
+        occ_grid_msg.info.origin.position.y = -self.map_origin[0] \
+                - self.map_resolution[0] * self.map_size[0]
+        occ_grid_msg.info.origin.orientation.w = 1
 
-        map_pix_to_occ_prob = numpy.array([-1, 0, 100], dtype=numpy.int8)
-        occ_grid_msg.data = map_pix_to_occ_prob[self.raw_map.T].flatten().tolist()
+        map_pix_to_occ_prob = np.array([-1, 0, 100], dtype=np.int8)
+        occ_grid_msg.data = map_pix_to_occ_prob[self.raw_map[::-1, ::-1].T].flatten().tolist()
         pub = rospy.Publisher("map", OccupancyGrid, queue_size=1, latch=True)
         pub.publish(occ_grid_msg)
 
