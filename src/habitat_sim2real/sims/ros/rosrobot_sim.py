@@ -47,7 +47,12 @@ class AgentState:
         return "AgentState(position={}, rotation={})".format(self.position, self.rotation)
 
 
-class _FakeROSPathfinder:
+class DummyROSAgent:
+    def __init__(self, state):
+        self.state = state
+
+
+class DummyROSPathfinder:
     def __init__(self, intf_node):
         self._intf_node = intf_node
         self._bounds = None
@@ -71,7 +76,7 @@ class ROSRobot(Simulator):
     def __init__(self, config):
         self.config = config
         self.intf_node = HabitatInterfaceROSNode(self.config.ROS)
-        self.pathfinder = _FakeROSPathfinder(self.intf_node)
+        self.pathfinder = DummyROSPathfinder(self.intf_node)
         self.cur_camera_tilt = 0
         self._sensor_suite = SensorSuite([ROSRGBSensor(config=self.config.RGB_SENSOR),
                                           ROSDepthSensor(config=self.config.DEPTH_SENSOR)])
@@ -142,6 +147,9 @@ class ROSRobot(Simulator):
             return self._sensor_suite.get_observations(raw_images)
         else:
             raise RuntimeError("Can only query observations for current pose on a real robot.")
+
+    def get_agent(self, agent_id=0):
+        return DummyROSAgent(self.get_agent_state())
 
     def get_agent_state(self, agent_id=0):
         p, q = self.intf_node.get_robot_pose()

@@ -149,10 +149,10 @@ class HabitatInterfaceROSNode:
 
     def get_map_bounds(self):
         with self.map_lock:
-            origin = self.map_origin_transform.translation
+            origin = self.map_origin_transform.transform.translation
             resolution = self.map_resolution
             shape = self.map_grid.shape
-        low = np.array([origin.x, origin.y, origin.z]),
+        low = np.array([origin.x, origin.y, origin.z])
         high = low + resolution * np.array([shape[0], 0.0, shape[1]])
         return low, high
 
