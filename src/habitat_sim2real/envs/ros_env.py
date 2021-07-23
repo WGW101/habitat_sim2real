@@ -12,14 +12,18 @@ from habitat_sim2real.sims.ros.default_cfg import merge_ros_config
 
 
 class ROSEnv(Env):
-    def __init__(self, config, dataset=None):
+    def __init__(self, config, *args, **kwargs):
         config = merge_ros_config(config)
-        super().__init__(config, None)
+        empty_dataset = habitat.make_dataset(config.DATASET.TYPE)
+        super().__init__(config, empty_dataset)
         self.episode_count = 0
 
     def close(self):
+        if self._episodes[-1].episode_id != self._current_episode.episode_id:
+            self._episodes.append(self._current_episode)
         out_path = self._config.DATASET.DATA_PATH.format(split=self._config.DATASET.SPLIT)
-        out_base, out_ext = os.path.splitext(out_path)
+        out_ext = ".json.gz"
+        out_base = out_path[:-len(out_ext)]
         suffix = itertools.count()
         while os.path.exists(out_path):
             out_path = out_base + "_ROS{:02d}".format(next(suffix)) + out_ext
@@ -50,10 +54,6 @@ class ROSEnv(Env):
         observations = self._task.reset(episode=self._current_episode)
         self._task.measurements.reset_measures(episode=self._current_episode, task=self._task)
         return observations
-
-    def _update_step_stats(self):
-        super()._update_step_stats()
-        self._episode_over = self._episode_over or self._sim.intf_node.has_collided()
 
 
 @baseline_registry.register_env(name="ROSNavRLEnv")

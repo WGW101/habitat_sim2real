@@ -47,11 +47,31 @@ class AgentState:
         return "AgentState(position={}, rotation={})".format(self.position, self.rotation)
 
 
+class _FakeROSPathfinder:
+    def __init__(self, intf_node):
+        self._intf_node = intf_node
+        self._bounds = None
+        self._topdown = None
+
+    def get_bounds(self):
+        if self._bounds is None:
+            self._bounds = self._intf_node.get_map_bounds()
+        return self._bounds
+
+    def get_topdown_view(self, *args, **kwargs):
+        if self._topdown is None:
+            thresh = self._intf_node.cfg.MAP_FREE_THRESH
+            grid = self._intf_node.get_map_grid()
+            self._topdown = (grid < thresh) & (grid > -1)
+        return self._topdown
+
+
 @habitat.registry.register_simulator(name="ROS-Robot-v0")
 class ROSRobot(Simulator):
     def __init__(self, config):
         self.config = config
         self.intf_node = HabitatInterfaceROSNode(self.config.ROS)
+        self.pathfinder = _FakeROSPathfinder(self.intf_node)
         self.cur_camera_tilt = 0
         self._sensor_suite = SensorSuite([ROSRGBSensor(config=self.config.RGB_SENSOR),
                                           ROSDepthSensor(config=self.config.DEPTH_SENSOR)])
@@ -60,6 +80,7 @@ class ROSRobot(Simulator):
         else: # v1 or pyrobotnoisy
             self._action_space = spaces.Discrete(6)
 
+        self.has_published_goal = False
         self.previous_step_collided = False
 
     @property
@@ -74,6 +95,7 @@ class ROSRobot(Simulator):
         self.config = config
 
     def reset(self):
+        self.has_published_goal = False
         ag_cfg = getattr(self.config, self.config.AGENTS[self.config.DEFAULT_AGENT_ID])
         if ag_cfg.IS_SET_START_STATE:
             pos = np.array(ag_cfg.START_POSITION)
@@ -130,6 +152,11 @@ class ROSRobot(Simulator):
             iter(destinations[0])
         except TypeError:
             destinations = [destinations]
+        # Kinda hacky... Sim has no way to know the goal when a new episode starts
+        # But the first call to geodesic_distance is for the distance_to_goal measure...
+        if not self.has_published_goal:
+            self.publish_episode_goal(destinations[0])
+            self.has_published_goal = True
         return min(self.intf_node.get_distance(src, dst) for dst in destinations)
 
     def sample_navigable_point(self):

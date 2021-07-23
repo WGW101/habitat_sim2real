@@ -81,11 +81,12 @@ class HabitatInterfaceROSNode:
         self.get_plan_proxy = rospy.ServiceProxy(cfg.MOVE_BASE_PLAN_SERVICE, GetPlan)
 
         self.episode_goal_pub = rospy.Publisher("habitat_episode_goal", PoseStamped,
-                                                queue_size=1)
+                                                queue_size=1, latch=True)
 
         self.rng = np.random.default_rng()
 
         self.pt_sub = rospy.Subscriber("/clicked_point", PointStamped, self.on_point)
+        self.point_lock = threading.Lock()
         self.last_point = None
         self.has_new_point = threading.Event()
 
@@ -146,9 +147,18 @@ class HabitatInterfaceROSNode:
         with self.map_lock:
             return self.map_grid
 
+    def get_map_bounds(self):
+        with self.map_lock:
+            origin = self.map_origin_transform.translation
+            resolution = self.map_resolution
+            shape = self.map_grid.shape
+        low = np.array([origin.x, origin.y, origin.z]),
+        high = low + resolution * np.array([shape[0], 0.0, shape[1]])
+        return low, high
+
     def on_point(self, pt_msg):
         try:
-            pt = self.tf_buffer.transform(pt_msg, self.cfg.TF_REF_FRAME, self.tf_timeout)
+            pt = self.tf_buffer.transform(pt_msg, self.cfg.TF_HABITAT_REF_FRAME, self.tf_timeout)
         except (tf2_ros.LookupException,
                 tf2_ros.ConnectivityException,
                 tf2_ros.ExtrapolationException) as e:

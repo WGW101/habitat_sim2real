@@ -11,12 +11,13 @@ class DatasetInspector(BaseSimulatorViewer):
     CV2_WAIT_TIME=1
 
     def __init__(self, cfg):
-        dataset = habitat.make_dataset(cfg.DATASET.TYPE, config=cfg.DATASET)
-        self.ep_iter = dataset.get_episode_iterator(cycle=True, group_by_scene=True)
+        self.dataset = habitat.make_dataset(cfg.DATASET.TYPE, config=cfg.DATASET)
+        self.ep_iter = self.dataset.get_episode_iterator(cycle=True, group_by_scene=True)
         self.cur_episode = next(self.ep_iter)
         self.pause_ep_iter = True
         self.ep_iter_freq = 20
         self.ep_time_elapsed = 0
+        self.show_all_episodes = False
 
         cfg.defrost()
         cfg.SIMULATOR.SCENE = self.cur_episode.scene_id
@@ -27,7 +28,11 @@ class DatasetInspector(BaseSimulatorViewer):
     def on_key(self, key_code):
         update = True
         if key_code == ord(' '):
-            self.pause_ep_iter = not self.pause_ep_iter
+            if not self.show_all_episodes:
+                self.pause_ep_iter = not self.pause_ep_iter
+        elif key_code == ord('b'):
+            self.show_all_episodes = not self.show_all_episodes
+            self.pause_ep_iter = True
         elif key_code == ord('n'):
             self.step_ep_iter()
         elif key_code == ord('+'):
@@ -55,27 +60,33 @@ class DatasetInspector(BaseSimulatorViewer):
             self.step_ep_iter()
             self.ep_time_elapsed = 0
     
-    def draw_episode_on_map(self, disp):
-        if self.cur_episode._shortest_path_cache is None:
-            self.sim.geodesic_distance(self.cur_episode.start_position,
-                                       self.cur_episode.goals[0].position,
-                                       self.cur_episode)
-        points = self.cur_episode._shortest_path_cache.points
+    def draw_episode_on_map(self, disp, episode=None):
+        if episode is None:
+            episode = self.cur_episode
+        if episode._shortest_path_cache is None:
+            self.sim.geodesic_distance(episode.start_position,
+                                       episode.goals[0].position,
+                                       episode)
+        points = episode._shortest_path_cache.points
         for pt1, pt2 in zip(points, points[1:]):
             map_pt1 = self.project_pos_to_map(pt1)
             map_pt2 = self.project_pos_to_map(pt2)
             cv2.line(disp, tuple(map_pt1), tuple(map_pt2), (0, 215, 205), 2)
-        start = self.project_pos_to_map(self.cur_episode.start_position)
-        rot = quat(self.cur_episode.start_rotation[3], *self.cur_episode.start_rotation[:3])
+        start = self.project_pos_to_map(episode.start_position)
+        rot = quat(episode.start_rotation[3], *episode.start_rotation[:3])
         q = quat(0, 0, 0, -1)
         start_head = (rot * q * rot.conjugate()).vec[::2]
         self.draw_agent_on_map(disp, start, start_head, (20, 205, 0))
-        goal = self.project_pos_to_map(self.cur_episode.goals[0].position)
+        goal = self.project_pos_to_map(episode.goals[0].position)
         cv2.circle(disp, tuple(goal), 5, (20, 0, 235), -1)
 
     def draw_map(self):
         disp = super().draw_map()
-        self.draw_episode_on_map(disp)
+        if self.show_all_episodes:
+            for episode in self.dataset.episodes:
+                self.draw_episode_on_map(disp, episode)
+        else:
+            self.draw_episode_on_map(disp)
         txt = "Ep#{}, iter: {}Hz".format(self.cur_episode.episode_id, self.ep_iter_freq)
         if self.pause_ep_iter:
             txt += " (paused)"

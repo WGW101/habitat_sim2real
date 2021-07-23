@@ -3,9 +3,11 @@
 import os
 os.environ["GLOG_minloglevel"] = "2"
 os.environ["MAGNUM_LOG"] = "quiet"
+import logging
 
 import argparse
 
+import habitat
 import habitat_sim2real
 
 from habitat_baselines.common.baseline_registry import baseline_registry
@@ -26,7 +28,9 @@ def parse_args():
 
 
 def main(args):
+    habitat.logger.setLevel(logging.ERROR)
     cfg = get_config(args.config_path, args.extra_cfg)
+    habitat_sim2real.merge_config(cfg.BASE_TASK_CONFIG)
 
     trainer_cls = baseline_registry.get_trainer(cfg.TRAINER_NAME)
     trainer = trainer_cls(cfg)

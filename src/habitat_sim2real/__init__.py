@@ -25,26 +25,28 @@ try:
 except ImportError as e:
     ros_import_error = e
     class ROSRobot:
-        def __init__(*args, **kwargs):
+        def __init__(self, *args, **kwargs):
             raise ros_import_error
     class HabitatInterfaceROSNode:
-        def __init__(*args, **kwargs):
+        def __init__(self, *args, **kwargs):
             raise ros_import_error
     def merge_ros_config(*args, **kwargs):
         raise ros_import_error
     def get_config(*args, **kwargs):
         raise ros_import_error
     class ROSEnv:
-        def __init__(*args, **kwargs):
+        def __init__(self, *args, **kwargs):
             raise ros_import_error
     class ROSNavRLEnv:
-        def __init__(*args, **kwargs):
+        def __init__(self, *args, **kwargs):
             raise ros_import_error
 
 try:
-    from .sims.jetbot.hetbot_sim import Jetbot
+    from .sims.jetbot.jetbot_sim import Jetbot
 except ImportError as e:
     jetbot_import_error = e
     class Jetbot:
-        def __init__(*args, **kwargs):
+        def __init__(self, *args, **kwargs):
             raise jetbot_import_error
+
+from .tasks.nav.traj_hist import TrajectoryHistory

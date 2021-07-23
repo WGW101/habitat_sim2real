@@ -3,8 +3,8 @@ dist/
 *.egg-info/
 __pycache__/
 
-data/
+data*
 
 tb/
-out/
+out*
 *.log
