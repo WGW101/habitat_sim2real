@@ -131,6 +131,7 @@ class HabitatInterfaceROSNode:
 
         grid = np.array(occ_grid_msg.data).reshape(occ_grid_msg.info.height,
                                                    occ_grid_msg.info.width)
+        grid = grid[::-1, ::-1].T
         free_points = np.stack(np.nonzero((grid < self.cfg.MAP_FREE_THRESH)
                                           & (grid > -1)), -1)
 
@@ -152,13 +153,14 @@ class HabitatInterfaceROSNode:
             origin = self.map_origin_transform.transform.translation
             resolution = self.map_resolution
             shape = self.map_grid.shape
-        low = np.array([origin.x, origin.y, origin.z])
-        high = low + resolution * np.array([shape[0], 0.0, shape[1]])
+        high = np.array([origin.x, origin.y, origin.z])
+        low = high - resolution * np.array([shape[0], 0.0, shape[1]])
         return low, high
 
     def on_point(self, pt_msg):
         try:
-            pt = self.tf_buffer.transform(pt_msg, self.cfg.TF_HABITAT_REF_FRAME, self.tf_timeout)
+            pt = self.tf_buffer.transform(pt_msg, self.cfg.TF_HABITAT_REF_FRAME,
+                                          self.tf_timeout)
         except (tf2_ros.LookupException,
                 tf2_ros.ConnectivityException,
                 tf2_ros.ExtrapolationException) as e:
@@ -183,8 +185,8 @@ class HabitatInterfaceROSNode:
             with self.map_lock:
                 pt = self.rng.choice(self.map_free_points) * self.map_resolution
                 pose = PoseStamped()
-                pose.pose.position.x = pt[1]
-                pose.pose.position.y = pt[0]
+                pose.pose.position.x = pt[0]
+                pose.pose.position.y = pt[1]
                 pose.pose.orientation.w = 1
                 pose = tf2_geometry_msgs.do_transform_pose(pose, self.map_origin_transform)
             return [pose.pose.position.x, pose.pose.position.y, pose.pose.position.z]
