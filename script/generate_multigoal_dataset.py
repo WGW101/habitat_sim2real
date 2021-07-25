@@ -21,7 +21,7 @@ DEFAULT_ARGS = {"config_path": "configs/locobot_multigoal_pointnav_citi_sim.yaml
                 "max_dist": 7.0,
                 "min_dist_ratio": 1.05,
                 "if_exist": "exit"}
-N_POINTS = 6000
+N_POINTS = 30000
 MAX_RETRIES = 10
 MIN_ISLAND_RADIUS = 1.5
 EPS = 0.1
