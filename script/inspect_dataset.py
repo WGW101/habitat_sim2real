@@ -84,7 +84,8 @@ class DatasetInspector(BaseSimulatorViewer):
         disp = super().draw_map()
         if self.show_all_episodes:
             for episode in self.dataset.episodes:
-                self.draw_episode_on_map(disp, episode)
+                if episode.scene_id == self.cfg.SCENE:
+                    self.draw_episode_on_map(disp, episode)
         else:
             self.draw_episode_on_map(disp)
         txt = "Ep#{}, iter: {}Hz".format(self.cur_episode.episode_id, self.ep_iter_freq)
