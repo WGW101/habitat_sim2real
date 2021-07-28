@@ -48,5 +48,3 @@ except ImportError as e:
     class Jetbot:
         def __init__(self, *args, **kwargs):
             raise jetbot_import_error
-
-from .tasks.nav.traj_hist import TrajectoryHistoryDump
