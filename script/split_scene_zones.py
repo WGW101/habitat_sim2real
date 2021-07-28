@@ -148,7 +148,7 @@ def main(args):
         for lbl, split in enumerate(splits, start=1):
             out_path = out_prefix + f"_zone{lbl}_excluded" + out_ext
             with gzip.open(out_path, 'wt') as f:
-                json.dump(split.to_json(), f)
+                f.write(split.to_json())
 
 
 if __name__ == "__main__":
