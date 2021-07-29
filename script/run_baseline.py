@@ -28,9 +28,9 @@ def parse_args():
 
 
 def main(args):
-    habitat.logger.setLevel(logging.ERROR)
     cfg = get_config(args.config_path, args.extra_cfg)
-    habitat_sim2real.merge_config(cfg.BASE_TASK_CONFIG)
+    if cfg.SIMULATOR.TYPE == "ROS-Robot-v0":
+        habitat_sim2real.merge_config(cfg.BASE_TASK_CONFIG)
 
     trainer_cls = baseline_registry.get_trainer(cfg.TRAINER_NAME)
     trainer = trainer_cls(cfg)
