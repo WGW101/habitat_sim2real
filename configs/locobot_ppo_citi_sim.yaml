@@ -16,6 +16,7 @@ LOG_INTERVAL: 25
 NUM_CHECKPOINTS: 20
 
 RL:
+  SLACK_REWARD: -0.02
   PPO:
     clip_param: 0.1
     ppo_epoch: 4
