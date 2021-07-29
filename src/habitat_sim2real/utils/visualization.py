@@ -166,11 +166,12 @@ class BaseSimulatorViewer:
             print("  - x={:0<+7.3f}, y={:0<+7.3f}, z={:0<+7.3f}".format(*pos))
 
     def project_pos_to_map(self, pos):
-        return ((pos[::2] - self.map_origin) / self.map_resolution).astype(np.int64)
+        return ((pos[..., [0, 2]] - self.map_origin) / self.map_resolution).astype(np.int64)
 
     def project_map_to_pos(self, uv):
         xz = uv * self.map_resolution + self.map_origin
-        return np.array([xz[0], self.map_altitude, xz[1]])
+        y = np.full_like(xz[..., 0], self.map_altitude)
+        return np.stack([xz[..., 0], y, xz[..., 1]], -1)
 
     def project_obs_to_pos(self, pix):
         d = self.obs["depth"][pix[1], pix[0]]
