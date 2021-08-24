@@ -141,9 +141,11 @@ class SplitZonesGUI:
         self.colors = zone_colors
         self.num_zones = zone_colors.shape[0]
         self.splits = [[True for _ in range(self.num_zones)]]
+        self.num_splits = 1
         self.auto_name_gen = (f"Split{i}" for i in itertools.count())
         self.labels = [next(self.auto_name_gen)]
-        self.num_splits = 1
+        self.renaming = -1
+        self.prv_name = ""
 
         self.name = name
         cv2.namedWindow(self.name, cv2.WINDOW_GUI_NORMAL | cv2.WINDOW_AUTOSIZE)
@@ -151,7 +153,7 @@ class SplitZonesGUI:
         self.do_loop = True
 
     def on_mouse_event(self, event, x, y, flags, params):
-        if event == cv2.EVENT_LBUTTONDOWN:
+        if event == cv2.EVENT_LBUTTONDOWN and self.renaming < 0:
             if y > (self.num_splits + 1) * (ROW_H + ROW_SEP):
                 if x < (self.w - COL_SEP) // 2:
                     self.add_split()
@@ -167,7 +169,9 @@ class SplitZonesGUI:
                     z = (x - (COL0_W + COL_SEP)) // (COL_W + COL_SEP)
                     self.splits[s][z] = not self.splits[s][z]
                 else:
-                    self.rename(s)
+                    self.prv_name = self.labels[s]
+                    self.labels[s] = ""
+                    self.renaming = s
             self.draw()
 
     def add_split(self):
@@ -184,11 +188,6 @@ class SplitZonesGUI:
         self.splits.insert(s + 1, [not zone_in_split for zone_in_split in self.splits[s]])
         self.labels.insert(s + 1, f"Not{self.labels[s]}")
         self.num_splits += 1
-
-    def rename(self, s):
-        name = input(f"New name for {self.labels[s]} ? ")
-        if name:
-            self.labels[s] = name
 
     def draw(self):
         self.h = ROW_H * (self.num_splits + 2) + ROW_SEP * (self.num_splits + 1)
@@ -232,7 +231,15 @@ class SplitZonesGUI:
     def loop(self):
         self.draw()
         while self.do_loop:
-            c = cv2.waitKey(300)
+            c = cv2.waitKey(1)
+            if self.renaming >= 0:
+                if c == ord('\r'):
+                    if len(self.labels[self.renaming]) == 0:
+                        self.labels[self.renaming] = self.prv_name
+                    self.renaming = -1
+                elif ord('A') <= c <= ord('z'):
+                    self.labels[self.renaming] = self.labels[self.renaming] + chr(c)
+                self.draw()
         return [{i for i, zone_in_split in enumerate(split, start=1) if not zone_in_split}
                 for split in self.splits]
 
