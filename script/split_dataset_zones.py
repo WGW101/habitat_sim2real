@@ -30,16 +30,8 @@ def parse_args():
 
 
 class ColorNavMapGUI:
-    def __init__(self, sim_cfg, map_height=None, map_resolution=0.03, name="Map"):
-        print("Loading navmap from simulator...")
-        with habitat.sims.make_sim(sim_cfg.TYPE, config=sim_cfg) as sim:
-            if map_height is None:
-                map_height = sim.get_agent_state().position[1]
-            self.scene_id = sim_cfg.SCENE
-            self.navmask = sim.pathfinder.get_topdown_view(map_resolution, map_height)
-            self.origin, _ = sim.pathfinder.get_bounds()
-            self.origin[1] = map_height
-
+    def __init__(self, navmask, name="Map"):
+        self.navmask = navmask
         self.edges = np.zeros_like(self.navmask)
         self.edges[:-1, :-1] = (self.navmask[:-1, :-1] != self.navmask[1:, :-1]) \
                              | (self.navmask[:-1, :-1] != self.navmask[:-1, 1:])
@@ -128,6 +120,7 @@ class ColorNavMapGUI:
 
     def close(self):
         cv2.destroyWindow(self.name)
+
 
 COL0_W = 96
 COL_W = 32
@@ -250,28 +243,36 @@ class SplitZonesGUI:
 def main(args):
     habitat.logger.setLevel(logging.ERROR)
     cfg = habitat.get_config(args.config_path, args.extra_cfg)
-    color_gui = ColorNavMapGUI(cfg.SIMULATOR, args.map_height, args.map_resolution)
-    zones = color_gui.loop()
+    print("Loading navmap from simulator...")
+    with habitat.sims.make_sim(cfg.SIMULATOR.TYPE, config=cfg.SIMULATOR) as sim:
+        if args.map_height is None:
+            args.map_height = sim.get_agent_state().position[1]
+        navmask = sim.pathfinder.get_topdown_view(args.map_resolution, args.map_height)
+        origin, _ = sim.pathfinder.get_bounds()
+        origin[1] = args.map_height
 
-    split_gui = SplitZonesGUI(color_gui.colors[1:color_gui.last_idx])
-    splits = split_gui.loop()
+        color_gui = ColorNavMapGUI(navmask)
+        zones = color_gui.loop()
 
-    print("Loading source dataset...")
-    data_in = habitat.make_dataset(cfg.DATASET.TYPE, config=cfg.DATASET)
-    data_out = [habitat.make_dataset(cfg.DATASET.TYPE) for _ in splits]
-    for episode in tqdm.tqdm(data.episodes):
-        xyz = np.array(sim.get_straight_shortest_path_points(episode.start_position,
-                                                             episode.goals[0].position))
-        j_i = ((xyz - origin) / args.map_resolution).astype(np.int64)
-        path_mask = np.zeros(zones.shape, dtype=np.uint8)
-        cv2.polylines(path_mask, j_i[None, :, [0, 2]], False, 1)
-        path_mask = path_mask.astype(np.bool)
-        episode_zones = set(zones[path_mask])
+        split_gui = SplitZonesGUI(color_gui.colors[1:color_gui.last_idx])
+        splits = split_gui.loop()
 
-        for data_split, excluded_zones in zip(data_out, splits):
-            if episode_zones & excluded_zones:
-                continue
-            data_split.episodes.append(episode)
+        print("Loading source dataset...")
+        data_in = habitat.make_dataset(cfg.DATASET.TYPE, config=cfg.DATASET)
+        data_out = [habitat.make_dataset(cfg.DATASET.TYPE) for _ in splits]
+        for episode in tqdm.tqdm(data_in.episodes):
+            xyz = np.array(sim.get_straight_shortest_path_points(episode.start_position,
+                                                                 episode.goals[0].position))
+            j_i = ((xyz - origin) / args.map_resolution).astype(np.int64)
+            path_mask = np.zeros(zones.shape, dtype=np.uint8)
+            cv2.polylines(path_mask, j_i[None, :, [0, 2]], False, 1)
+            path_mask = path_mask.astype(np.bool)
+            episode_zones = set(zones[path_mask])
+
+            for data_split, excluded_zones in zip(data_out, splits):
+                if episode_zones & excluded_zones:
+                    continue
+                data_split.episodes.append(episode)
 
     data_path = cfg.DATASET.DATA_PATH.format(split=cfg.DATASET.SPLIT)
     out_ext = ".json.gz"

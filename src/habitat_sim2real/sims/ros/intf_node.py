@@ -149,6 +149,8 @@ class HabitatInterfaceROSNode:
             return self.map_grid
 
     def get_map_bounds(self):
+        if not self.has_first_map.wait(self.cfg.GETTER_TIMEOUT):
+            raise RuntimeError("Timed out waiting for map.")
         with self.map_lock:
             origin = self.map_origin_transform.transform.translation
             resolution = self.map_resolution
