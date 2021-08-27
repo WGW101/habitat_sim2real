@@ -74,13 +74,13 @@ class DummyROSPathfinder:
 @habitat.registry.register_simulator(name="ROS-Robot-v0")
 class ROSRobot(Simulator):
     def __init__(self, config):
-        self.config = config
-        self.intf_node = HabitatInterfaceROSNode(self.config.ROS)
+        self.habitat_config = config
+        self.intf_node = HabitatInterfaceROSNode(config.ROS)
         self.pathfinder = DummyROSPathfinder(self.intf_node)
         self.cur_camera_tilt = 0
-        self._sensor_suite = SensorSuite([ROSRGBSensor(config=self.config.RGB_SENSOR),
-                                          ROSDepthSensor(config=self.config.DEPTH_SENSOR)])
-        if self.config.ACTION_SPACE_CONFIG == "v0":
+        self._sensor_suite = SensorSuite([ROSRGBSensor(config=config.RGB_SENSOR),
+                                          ROSDepthSensor(config=config.DEPTH_SENSOR)])
+        if config.ACTION_SPACE_CONFIG == "v0":
             self._action_space = spaces.Discrete(4)
         else: # v1 or pyrobotnoisy
             self._action_space = spaces.Discrete(6)
@@ -97,11 +97,12 @@ class ROSRobot(Simulator):
         return self._action_space
 
     def reconfigure(self, config):
-        self.config = config
+        self.habitat_config = config
 
     def reset(self):
         self.has_published_goal = False
-        ag_cfg = getattr(self.config, self.config.AGENTS[self.config.DEFAULT_AGENT_ID])
+        ag_cfg = getattr(self.habitat_config,
+                         self.habitat_config.AGENTS[self.habitat_config.DEFAULT_AGENT_ID])
         if ag_cfg.IS_SET_START_STATE:
             pos = np.array(ag_cfg.START_POSITION)
             rot = quat.quaternion(ag_cfg.START_ROTATION[3], *ag_cfg.START_ROTATION[:3])
@@ -109,7 +110,7 @@ class ROSRobot(Simulator):
             if not (np.allclose(pos, state.position)
                     and quat.isclose(rot, state.rotation)):
                 self.intf_node.move_to_absolute(ag_cfg.START_POSITION, ag_cfg.START_ROTATION)
-        self.intf_node.set_camera_tilt(self.config.RGB_SENSOR.ORIENTATION[0])
+        self.intf_node.set_camera_tilt(self.habitat_config.RGB_SENSOR.ORIENTATION[0])
         self.intf_node.clear_collided()
         self.previous_step_collided = False
         raw_images = self.intf_node.get_raw_images()
@@ -119,17 +120,17 @@ class ROSRobot(Simulator):
         if action == 0: # STOP
             pass
         elif action == 1: # MOVE_FORWARD
-            self.intf_node.move_to_relative(self.config.FORWARD_STEP_SIZE, 0)
+            self.intf_node.move_to_relative(self.habitat_config.FORWARD_STEP_SIZE, 0)
         elif action == 2: # TURN_LEFT
-            self.intf_node.move_to_relative(0, np.radians(self.config.TURN_ANGLE))
+            self.intf_node.move_to_relative(0, np.radians(self.habitat_config.TURN_ANGLE))
         elif action == 3: # TURN_RIGHT
-            self.intf_node.move_to_relative(0, -np.radians(self.config.TURN_ANGLE))
+            self.intf_node.move_to_relative(0, -np.radians(self.habitat_config.TURN_ANGLE))
         elif action == 4: # LOOK_UP
-            self.cur_camera_tilt -= self.config.TILT_ANGLE
+            self.cur_camera_tilt -= self.habitat_config.TILT_ANGLE
             self.cur_camera_tilt = max(-45, min(self.cur_camera_tilt, 45))
             self.intf_node.set_camera_tilt(np.radians(self.cur_camera_tilt))
         elif action == 5: # LOOK_DOWN
-            self.cur_camera_tilt += self.config.TILT_ANGLE
+            self.cur_camera_tilt += self.habitat_config.TILT_ANGLE
             self.cur_camera_tilt = max(-45, min(self.cur_camera_tilt, 45))
             self.intf_node.set_camera_tilt(np.radians(self.cur_camera_tilt))
 

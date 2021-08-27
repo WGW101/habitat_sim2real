@@ -35,6 +35,9 @@ class HabitatInterfaceROSNode:
         self.tf_listerner = tf2_ros.TransformListener(self.tf_buffer)
         self.tf_timeout = rospy.Duration(self.cfg.TF_TIMEOUT)
 
+        self.last_p = (0, 0, 0)
+        self.last_q = (0, 0, 0, 1)
+
         self.color_sub = message_filters.Subscriber(cfg.COLOR_IMAGE_TOPIC, Image)
         self.depth_sub = message_filters.Subscriber(cfg.DEPTH_IMAGE_TOPIC, Image)
         self.img_sync = message_filters.TimeSynchronizer([self.color_sub, self.depth_sub],
@@ -216,12 +219,13 @@ class HabitatInterfaceROSNode:
                 tf2_ros.ConnectivityException,
                 tf2_ros.ExtrapolationException) as e:
             logging.warn(e)
-            return None, None
+            return self.last_p, self.last_q
         p = (trans.transform.translation.x,
              trans.transform.translation.y,
              trans.transform.translation.z)
         q = (trans.transform.rotation.x, trans.transform.rotation.y,
              trans.transform.rotation.z, trans.transform.rotation.w)
+        self.last_p, self.last_q = p, q
         return p, q
 
     def _make_pose_stamped(self, pos, rot=None):
@@ -289,7 +293,7 @@ class HabitatInterfaceROSNode:
     def set_camera_tilt(self, tilt):
         self.tilt_reached_event.clear()
         self.tilt_target_value = int(self.cfg.DYNAMIXEL_TICK_OFFSET
-                                     + self.cfg.DYNAMIXEL_TICK_PER_RAD * tilt)
+                                     - self.cfg.DYNAMIXEL_TICK_PER_RAD * tilt)
         res = self.dynamixel_cmd_proxy("", self.cfg.DYNAMIXEL_TILT_ID,
                                        "Goal_Position", self.tilt_target_value)
         if res.comm_result:

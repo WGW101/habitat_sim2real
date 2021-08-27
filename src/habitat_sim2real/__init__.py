@@ -1,6 +1,8 @@
 from .utils.visualization import BaseSimulatorViewer
 from .utils.perlin import perlin_1d, perlin_2d
 
+from .tasks.real.motion_error_measure import MotionErrorMeasure
+
 try:
     from .sims.pyrobot.pyrobot_discrete_action import PyRobotDiscreteActions
 except ImportError as e:
