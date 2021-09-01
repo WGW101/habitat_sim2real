@@ -3,7 +3,7 @@ import habitat
 import random
 
 
-EPSILON = 1e-2
+EPSILON = 1e-4
 
 
 def test_motion_error_measure():
@@ -38,5 +38,5 @@ def test_motion_error_measure():
                 assert abs(err["longitudinal"]) > EPSILON
             else:
                 assert abs(err["longitudinal"]) < EPSILON
-                assert abs(err["lateral"]) < EPSILON
+            assert abs(err["lateral"]) < EPSILON
             assert abs(err["angular"]) < EPSILON

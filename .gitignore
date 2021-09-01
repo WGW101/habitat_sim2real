@@ -4,7 +4,6 @@ dist/
 __pycache__/
 
 data*
-
-tb/
+TEMP*
 out*
 *.log
