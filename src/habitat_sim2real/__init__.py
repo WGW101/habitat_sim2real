@@ -1,6 +1,7 @@
 from .utils.visualization import BaseSimulatorViewer
 from .utils.perlin import perlin_1d, perlin_2d
 
+from .sims.parallel_sim.parallel_sim import make_parallel
 from .tasks.real.motion_error_measure import MotionErrorMeasure
 from .tasks.nav.noisy_pointgoal import NoisyPointGoalWithGPSAndCompassSensor
 
