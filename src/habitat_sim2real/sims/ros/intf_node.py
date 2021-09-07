@@ -59,6 +59,7 @@ class HabitatInterfaceROSNode:
         self.bump_sub = rospy.Subscriber(cfg.BUMPER_TOPIC, BumperEvent, self.on_bump)
         self.collided_lock = threading.Lock()
         self.collided = False
+        self.cancel_move_on_bump = True
 
         self.move_base_client = actionlib.SimpleActionClient(cfg.MOVE_BASE_ACTION_SERVER,
                                                              MoveBaseAction)
@@ -197,7 +198,7 @@ class HabitatInterfaceROSNode:
             return [pose.pose.position.x, pose.pose.position.y, pose.pose.position.z]
 
     def on_bump(self, bump_msg):
-        if bump_msg.state == BumperEvent.PRESSED:
+        if bump_msg.state == BumperEvent.PRESSED and self.cancel_move_on_bump:
             self.move_base_client.cancel_goal()
             with self.collided_lock:
                 self.collided = True

@@ -109,7 +109,9 @@ class ROSRobot(Simulator):
             state = self.get_agent_state()
             if not (np.allclose(pos, state.position)
                     and quat.isclose(rot, state.rotation)):
+                self.intf_node.cancel_move_on_bump = False
                 self.intf_node.move_to_absolute(ag_cfg.START_POSITION, ag_cfg.START_ROTATION)
+                self.intf_node.cancel_move_on_bump = True
         self.intf_node.set_camera_tilt(self.habitat_config.RGB_SENSOR.ORIENTATION[0])
         self.intf_node.clear_collided()
         self.previous_step_collided = False
