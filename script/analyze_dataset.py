@@ -23,6 +23,8 @@ def parse_args():
                         help="Generate shortest path to get min #steps")
     parser.add_argument("--use-densities", "-d", action="store_true",
                         help="Plot using densities instead of #samples")
+    parser.add_argument("--num-bins", "-b", type=int, default=30,
+                        help="Number of bins in histograms")
     parser.add_argument("extra_cfg", nargs=argparse.REMAINDER,
                         help="Extra config options as 'KEY value' pairs")
     return parser.parse_args()
@@ -85,21 +87,21 @@ def main(args):
     colors = [cmap(i / len(counts)) for i, _ in enumerate(counts)]
     fig, axes = pyplot.subplots(4 if args.gen_shortest_path else 3, 1)
     for ax in axes:
-        ax.set_ylabel("Density" if args.use_densities else "#samples")
+        ax.set_ylabel("Density" if args.use_densities else "#episodes")
     axes[0].set_xlabel("Difficulty")
     axes[0].bar(*zip(*counts.items()), color=colors)
     axes[1].set_xlabel("Geodesic distance")
-    axes[1].hist(geo_dists, stacked=True, density=args.use_densities, bins=20, color=colors)
+    axes[1].hist(geo_dists, stacked=True, density=args.use_densities, bins=args.num_bins, color=colors)
     if args.gen_shortest_path:
         axes[2].set_xlabel("#steps in shortest path")
-        axes[2].hist(num_steps, stacked=True, density=args.use_densities, bins=20, color=colors)
+        axes[2].hist(num_steps, stacked=True, density=args.use_densities, bins=args.num_bins, color=colors)
     axes[-1].set_xlabel("Geodesic/Euclidian distance ratio")
-    axes[-1].hist(dist_ratios, stacked=True, density=args.use_densities, bins=20, color=colors)
+    axes[-1].hist(dist_ratios, stacked=True, density=args.use_densities, bins=args.num_bins, range=(1, 6), color=colors)
 
-    fig.suptitle("_".join(cfg.DATASET.DATA_PATH.split("/")[2:5]))
+    title = "_".join(cfg.DATASET.DATA_PATH.split("/")[2:5])
+    fig.suptitle(title)
     fig.set_tight_layout(True)
     pyplot.show()
-
 
 if __name__ == "__main__":
     main(parse_args())
