@@ -66,7 +66,7 @@ class SlaveProcess(mp.Process):
 
     def run(self) -> None:
         _logger.debug("[SLAVE] Running slave proc.")
-        _logger.debug(f"[SLAVE] {os.getpid()=}")
+        _logger.debug(f"[SLAVE] pid={os.getpid()}")
         with make_sim(self._config.TYPE, config=self._config) as sim:
             _logger.debug(f"[SLAVE] Created slave sim")
             self._conn.send((SlaveProcess.Messages.READY, None))
@@ -131,7 +131,7 @@ def make_parallel(master_cls, *, slave_type: Optional[str]=None,
         def __init__(self, master_config: Config, *args: Any, **kwargs: Any) -> None:
             super().__init__(master_config)
             _logger.debug("[MASTER] Initialized super() on master proc.")
-            _logger.debug(f"[MASTER] {os.getpid()=}")
+            _logger.debug(f"[MASTER] pid={os.getpid()}")
             slave_cfg = master_config.clone()
             slave_cfg.merge_from_other_cfg(slave_config)
             mp.set_start_method("forkserver")
