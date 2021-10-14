@@ -67,11 +67,11 @@ class BaseSimulatorViewer:
             self.update()
 
     def on_mouse_obs(self, event, x, y, flags, param):
+        if y >= self.cfg.RGB_SENSOR.HEIGHT:
+            y -= self.cfg.RGB_SENSOR.HEIGHT
         pix = np.array([x, y], dtype=np.int64)
         if self.scale:
             pix = (pix / self.scale).astype(np.int64)
-        if y >= self.cfg.RGB_SENSOR.HEIGHT:
-            y -= self.cfg.RGB_SENSOR.HEIGHT
         if event == cv2.EVENT_LBUTTONDOWN:
             self.add_pin(pix)
         elif event == cv2.EVENT_RBUTTONDOWN:
@@ -145,12 +145,9 @@ class BaseSimulatorViewer:
 
     def remove_pin(self, pix):
         if self.pins:
-            print("Remove pin", pix)
             pos = self.project_obs_to_pos(pix)
-            print(pos)
             d, closest = min((np.linalg.norm(pos - p), idx)
                              for idx, (p, _) in enumerate(self.pins))
-            print(closest, *self.pins[closest], d)
             if d < 0.5:
                 del self.pins[closest]
                 self.update()
