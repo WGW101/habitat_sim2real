@@ -42,7 +42,7 @@ class BaseSimulatorViewer:
 
         self.obs_size = np.array([self.cfg.DEPTH_SENSOR.WIDTH, self.cfg.DEPTH_SENSOR.HEIGHT],
                                  dtype=np.int64)
-        self.obs_f = self.obs_size[0] / np.tan(np.radians(0.5 * self.cfg.DEPTH_SENSOR.HFOV))
+        self.obs_f = 0.5 * self.obs_size[0] / np.tan(np.radians(0.5 * self.cfg.DEPTH_SENSOR.HFOV))
 
         self.drag_start = None
         self.drag_vec = None

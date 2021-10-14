@@ -1,3 +1,4 @@
+import argparse
 import enum
 import itertools
 
@@ -180,8 +181,18 @@ class DatasetInspector(BaseSimulatorViewer):
         return disp
 
 
-if __name__ == "__main__":
-    import sys
-    cfg = habitat.get_config("configs/locobot_pointnav_citi_sim.yaml", sys.argv[1:])
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config-path", "-c", default="configs/locobot_pointnav_citi_sim.yaml")
+    parser.add_argument("extra_cfg", nargs=argparse.REMAINDER)
+    return parser.parse_args()
+
+
+def main(args):
+    cfg = habitat.get_config(args.config_path, args.extra_cfg)
     viewer = DatasetInspector(cfg)
     viewer.run()
+
+
+if __name__ == "__main__":
+    main(parse_args())
