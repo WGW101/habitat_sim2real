@@ -1,9 +1,12 @@
 import itertools
-import os.path
+import os
 import gzip
+import time
 
 from habitat.core.env import Env
+from habitat.core.logging import logger
 from habitat.tasks.nav.nav import NavigationGoal, NavigationEpisode
+from habitat.datasets import make_dataset
 
 from habitat_baselines.common.environments import NavRLEnv
 from habitat_baselines.common.baseline_registry import baseline_registry
@@ -13,43 +16,40 @@ from habitat_sim2real.sims.ros.default_cfg import merge_ros_config
 
 class ROSEnv(Env):
     def __init__(self, config, *args, **kwargs):
-        config = merge_ros_config(config)
-        empty_dataset = habitat.make_dataset(config.DATASET.TYPE)
-        super().__init__(config, empty_dataset)
-        self.episode_count = 0
+        super().__init__(config=config, *args, **kwargs)
+        self._dataset = make_dataset(config.DATASET.TYPE)
+        self._episodes = self._dataset.episodes
+        self._current_episode = None
+        self.t_str = time.strftime("%y-%m-%d_%H-%M-%S")
 
     def close(self):
         if self._episodes[-1].episode_id != self._current_episode.episode_id:
             self._episodes.append(self._current_episode)
-        out_path = self._config.DATASET.DATA_PATH.format(split=self._config.DATASET.SPLIT)
-        out_ext = ".json.gz"
-        out_base = out_path[:-len(out_ext)]
-        suffix = itertools.count()
-        while os.path.exists(out_path):
-            out_path = out_base + "_ROS{:02d}".format(next(suffix)) + out_ext
-        with gzip.open(out_path, 'wt') as f:
+        outpath = f"data/datasets/pointnav/real_online_demo/{self.t_str}/val/val.json.gz"
+        os.makedirs(os.path.dirname(outpath))
+        with gzip.open(outpath, 'wt') as f:
             f.write(self._dataset.to_json())
         super().close()
 
     def reset(self):
         self._reset_stats()
 
-        if self._current_episode:
+        if self._current_episode is not None:
+            logger.info(f"{self._current_episode.episode_id}:"
+                        + ", ".join(f"{k}={v:.2f}" for k, v in self.get_metrics().items()))
             self._episodes.append(self._current_episode)
-            self.episode_count += 1
 
         state = self._sim.get_agent_state()
         goal = NavigationGoal(position=self._sim.sample_navigable_point(),
                               radius=self._config.TASK.SUCCESS.SUCCESS_DISTANCE)
-        self._current_episode = NavigationEpisode(episode_id=str(self.episode_count),
-                                                  scene_id="REAL",
-                                                  start_position=state.position.tolist(),
-                                                  start_rotation=[state.rotation.x,
-                                                                  state.rotation.y,
-                                                                  state.rotation.z,
-                                                                  state.rotation.w],
-                                                  goals=[goal])
-        self._sim.publish_episode_goal(goal.position)
+        self._current_episode = NavigationEpisode(
+            episode_id=f"REAL_{self.t_str}_{len(self._episodes)}",
+            scene_id="REAL",
+            start_position=state.position.tolist(),
+            start_rotation=[state.rotation.x, state.rotation.y,
+                            state.rotation.z, state.rotation.w],
+            goals=[goal]
+        )
 
         observations = self._task.reset(episode=self._current_episode)
         self._task.measurements.reset_measures(episode=self._current_episode, task=self._task)
@@ -67,7 +67,7 @@ class ROSNavRLEnv(NavRLEnv):
         self._previous_measure = None
         self._previous_action = None
 
-        self._env = ROSEnv(config.TASK_CONFIG, dataset)
+        self._env = ROSEnv(config.TASK_CONFIG)
         self.observation_space = self._env.observation_space
         self.action_space = self._env.action_space
         self.number_of_episodes = self._env.number_of_episodes

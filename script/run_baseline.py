@@ -14,7 +14,7 @@ from habitat_baselines.common.baseline_registry import baseline_registry
 from habitat_baselines.config.default import get_config
 
 
-CFG_PATH = "configs/locobot_ppo_citi_sim.yaml"
+CFG_PATH = "configs/eval_ppo_real_locobot.yaml"
 
 
 def parse_args():
