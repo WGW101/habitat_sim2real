@@ -30,7 +30,9 @@ def parse_args():
 def main(args):
     cfg = get_config(args.config_path, args.extra_cfg)
     if cfg.TASK_CONFIG.SIMULATOR.TYPE == "ROS-Robot-v0":
-        habitat_sim2real.merge_ros_config(cfg.TASK_CONFIG)
+        cfg.defrost()
+        cfg.TASK_CONFIG = habitat_sim2real.merge_config(cfg.TASK_CONFIG)
+        cfg.freeze()
 
     trainer_cls = baseline_registry.get_trainer(cfg.TRAINER_NAME)
     trainer = trainer_cls(cfg)

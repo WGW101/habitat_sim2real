@@ -1,6 +1,6 @@
 from .utils.visualization import BaseSimulatorViewer
 from .utils.perlin import perlin_1d, perlin_2d
-
+from .config.default import merge_config, get_config
 from .sims.parallel_sim.parallel_sim import make_parallel
 from .tasks.real.motion_error_measure import MotionErrorMeasure
 from .tasks.nav.noisy_pointgoal import NoisyPointGoalWithGPSAndCompassSensor
@@ -15,16 +15,19 @@ except ImportError as e:
 
 try:
     from .sims.habitat_simulator.realistic_depth_sensor import RealisticHabitatSimDepthSensor
+    from .sims.habitat_simulator.laserscan_sensor import HabitatSimLaserScanSensor, HabitatSim
 except ImportError as e:
     habitat_sim_import_error = e
     class RealisticHabitatSimDepthSensor:
+        def __init__(*args, **kwargs):
+            raise habitat_sim_import_error
+    class HabitatSimLaserScanSensor:
         def __init__(*args, **kwargs):
             raise habitat_sim_import_error
 
 try:
     from .sims.ros.rosrobot_sim import ROSRobot
     from .sims.ros.intf_node import HabitatInterfaceROSNode
-    from .sims.ros.default_cfg import merge_ros_config, get_config
     from .envs.ros_env import ROSEnv, ROSNavRLEnv
 except ImportError as e:
     ros_import_error = e
@@ -34,10 +37,6 @@ except ImportError as e:
     class HabitatInterfaceROSNode:
         def __init__(self, *args, **kwargs):
             raise ros_import_error
-    def merge_ros_config(*args, **kwargs):
-        raise ros_import_error
-    def get_config(*args, **kwargs):
-        raise ros_import_error
     class ROSEnv:
         def __init__(self, *args, **kwargs):
             raise ros_import_error
