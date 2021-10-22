@@ -10,6 +10,7 @@ cfg = habitat_sim2real.get_config().SIMULATOR
 cfg.defrost()
 cfg.TYPE = "Sim-v1"
 cfg.AGENT_0.SENSORS.append("SCAN_SENSOR")
+cfg.SCAN_SENSOR.POINTS_FORMAT = "CARTESIAN"
 cfg.freeze()
 
 SHOW_SCANLINES = False
@@ -35,8 +36,12 @@ with habitat.sims.make_sim(cfg.TYPE, config=cfg) as sim:
 
         z = obs["scan"]
         rel = np.zeros((z.shape[0], 4))
-        rel[:, 1] = -z[:, 0] * np.sin(z[:, 1])
-        rel[:, 3] = -z[:, 0] * np.cos(z[:, 1])
+        if cfg.SCAN_SENSOR.POINTS_FORMAT == "POLAR":
+            rel[:, 1] = -z[:, 0] * np.sin(z[:, 1])
+            rel[:, 3] = -z[:, 0] * np.cos(z[:, 1])
+        else:
+            rel[:, 1] = -z[:, 1]
+            rel[:, 3] = -z[:, 0]
         q = quaternion.from_float_array(rel)
         pts = quaternion.as_float_array(s.rotation * q * s.rotation.conj())[:, 1:] + s.position
         j, _, i =  ((pts - origin) / 0.01).astype(np.int64).T
