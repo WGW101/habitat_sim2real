@@ -10,10 +10,13 @@ cfg = habitat_sim2real.get_config().SIMULATOR
 cfg.defrost()
 cfg.TYPE = "Sim-v1"
 cfg.AGENT_0.SENSORS.append("SCAN_SENSOR")
-cfg.SCAN_SENSOR.POINTS_FORMAT = "CARTESIAN"
+cfg.SCAN_SENSOR.POINTS_FORMAT = "POLAR"
+cfg.SCAN_SENSOR.ORIENTATION = [0.167 * np.pi, np.pi, 0]
+cfg.SCAN_SENSOR.MIN_ANGLE = -0.5 * np.pi
+cfg.SCAN_SENSOR.MAX_ANGLE = 0.5 * np.pi
 cfg.freeze()
 
-SHOW_SCANLINES = False
+SHOW_SCANLINES = True
 
 with habitat.sims.make_sim(cfg.TYPE, config=cfg) as sim:
     obs = sim.reset()
@@ -22,6 +25,8 @@ with habitat.sims.make_sim(cfg.TYPE, config=cfg) as sim:
     navmask = sim.pathfinder.get_topdown_view(0.01, h + 0.5)
     origin, _ = sim.pathfinder.get_bounds()
     origin[1] = h
+
+    scan = sim.sensor_suite.sensors["scan"]
 
     while True:
         img = np.full(navmask.shape + (3,), 255, dtype=np.uint8)
@@ -35,11 +40,12 @@ with habitat.sims.make_sim(cfg.TYPE, config=cfg) as sim:
         cv2.line(img, (j0, i0), (j1, i1), (0, 0, 0), 3)
 
         z = obs["scan"]
+        s = scan.get_state(s)
         rel = np.zeros((z.shape[0], 4))
         if cfg.SCAN_SENSOR.POINTS_FORMAT == "POLAR":
             rel[:, 1] = -z[:, 0] * np.sin(z[:, 1])
             rel[:, 3] = -z[:, 0] * np.cos(z[:, 1])
-        else:
+        else: # CARTESIAN
             rel[:, 1] = -z[:, 1]
             rel[:, 3] = -z[:, 0]
         q = quaternion.from_float_array(rel)
