@@ -111,7 +111,7 @@ class SlaveProcess(mp.Process):
         return {"rgb": cp_rgb, "depth": cp_depth}
 
 
-def make_parallel(master_cls, *, slave_type: Optional[str]=None,
+def make_sidechain(master_cls, *, slave_type: Optional[str]=None,
                                  slave_config: Optional[Config]=None):
     if slave_config is None:
         if slave_type is None:
@@ -121,7 +121,7 @@ def make_parallel(master_cls, *, slave_type: Optional[str]=None,
         slave_config.TYPE = slave_type
 
 
-    class ParallelSimulator(master_cls):
+    class SidechainSimulator(master_cls):
         _slave_proc: SlaveProcess
         _conn: mp.connection.Connection
         _state_diff: AgentState
@@ -216,4 +216,4 @@ def make_parallel(master_cls, *, slave_type: Optional[str]=None,
             self._slave_proc.join()
             super().close()
 
-    return ParallelSimulator
+    return SidechainSimulator
