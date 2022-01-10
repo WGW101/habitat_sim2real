@@ -1,7 +1,7 @@
 from .utils.visualization import BaseSimulatorViewer
 from .utils.perlin import perlin_1d, perlin_2d
 from .config.default import merge_config, get_config
-from .sims.parallel_sim.parallel_sim import make_parallel
+from .sims.sidechain_sim.sidechain_sim import make_sidechain
 from .tasks.real.motion_error_measure import MotionErrorMeasure
 from .tasks.nav.noisy_pointgoal import NoisyPointGoalWithGPSAndCompassSensor
 
@@ -29,6 +29,7 @@ try:
     from .sims.ros.rosrobot_sim import ROSRobot
     from .sims.ros.intf_node import HabitatInterfaceROSNode
     from .envs.ros_env import ROSEnv, ROSNavRLEnv
+    from .tasks.nav.goto_action import ROSGotoAction
 except ImportError as e:
     ros_import_error = e
     class ROSRobot:
@@ -41,6 +42,9 @@ except ImportError as e:
         def __init__(self, *args, **kwargs):
             raise ros_import_error
     class ROSNavRLEnv:
+        def __init__(self, *args, **kwargs):
+            raise ros_import_error
+    class ROSGotoAction:
         def __init__(self, *args, **kwargs):
             raise ros_import_error
 

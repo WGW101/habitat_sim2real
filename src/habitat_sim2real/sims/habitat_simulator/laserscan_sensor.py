@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, ClassVar
+from typing import Any, ClassVar, List, Dict
 import math
 
 import numpy as np
@@ -34,7 +34,7 @@ class HabitatSimLaserScanSensor(Sensor):
                                          * 2 / math.pi)
         self._depth_cams_width = math.ceil(0.5 * math.pi / self.config.INC_ANGLE)
         self._depth_rect = np.sqrt(np.linspace(-1, 1, self._depth_cams_width)**2 + 1)
-        super().__init__(*args, config=config, **kwargs)
+        super().__init__(config=config, *args, **kwargs)
 
     def _get_uuid(self, *args: Any, **kwargs: Any) -> str:
         return HabitatSimLaserScanSensor.cls_uuid
@@ -64,11 +64,11 @@ class HabitatSimLaserScanSensor(Sensor):
             return np.stack([ranges * np.cos(self.angles),
                              ranges * np.sin(self.angles)], 1).astype(np.float32)
 
-    def get_cams_specs(self) -> List[habitat_sim.SensorSpec]:
+    def get_cams_specs(self) -> List[habitat_sim.CameraSensorSpec]:
         q_self = self.relative_rotation
         specs = []
         for i in range(self._num_depth_cams):
-            spec = habitat_sim.SensorSpec()
+            spec = habitat_sim.CameraSensorSpec()
             spec.uuid = f"_{self.uuid}_cam{i}"
             spec.sensor_type = habitat_sim.SensorType.DEPTH
             spec.position = self.config.POSITION
@@ -77,7 +77,7 @@ class HabitatSimLaserScanSensor(Sensor):
             q_cam = q_self * q_yaw
             spec.orientation = list(_quaternion_to_eulers(q_cam))
             spec.resolution = [1, self._depth_cams_width]
-            spec.parameters["hfov"] = "90"
+            spec.hfov = 90
             specs.append(spec)
         return specs
 

@@ -173,9 +173,6 @@ class ROSRobot(Simulator):
     def sample_navigable_point(self):
         return self.intf_node.sample_free_point()
 
-    def get_topdown_map(self):
-        return self.intf_node.get_map_grid()
-
     def seed(self, seed):
         self.intf_node.seed_rng(seed)
 

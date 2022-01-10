@@ -32,7 +32,7 @@ class HabitatInterfaceROSNode:
         rospy.init_node(cfg.NODE_NAME)
 
         self.tf_buffer = tf2_ros.Buffer()
-        self.tf_listerner = tf2_ros.TransformListener(self.tf_buffer)
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         self.tf_timeout = rospy.Duration(self.cfg.TF_TIMEOUT)
 
         self.last_p = (0, 0, 0)
