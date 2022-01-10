@@ -26,7 +26,7 @@ class NoisyPointGoalWithGPSAndCompassSensor(PointGoalSensor):
         rot_noise = np.quaternion()
         rot_noise.real = np.cos(0.5 * angle_noise)
         rot_noise.imag = np.sin(0.5 * angle_noise) * self._sim.up_vector
-        rotation_world_agent = agent_state.rotation * rot_noise
+        rotation_world_agent = rot_noise * agent_state.rotation
 
         goal_position = np.array(episode.goals[0].position, dtype=np.float32)
 

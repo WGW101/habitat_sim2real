@@ -47,7 +47,8 @@ class HabitatSimLaserScanSensor(Sensor):
             return gym.spaces.Box(np.array([[self.config.MIN_RANGE, self.config.MIN_ANGLE]
                                             for _ in range(self.num_rays)], dtype=np.float32),
                                   np.array([[self.config.MAX_RANGE, self.config.MAX_ANGLE]
-                                            for _ in range(self.num_rays)], dtype=np.float32))
+                                            for _ in range(self.num_rays)], dtype=np.float32),
+                                  dtype=np.float32)
         elif self.config.POINTS_FORMAT == "CARTESIAN":
             return gym.spaces.Box(-self.config.MAX_RANGE, self.config.MAX_RANGE,
                                   (self.num_rays, 2), dtype=np.float32)

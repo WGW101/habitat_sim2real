@@ -4,6 +4,7 @@ from .config.default import merge_config, get_config
 from .sims.sidechain_sim.sidechain_sim import make_sidechain
 from .tasks.real.motion_error_measure import MotionErrorMeasure
 from .tasks.nav.noisy_pointgoal import NoisyPointGoalWithGPSAndCompassSensor
+from .tasks.nav.ego_map import EgoMapSensor
 
 try:
     from .sims.pyrobot.pyrobot_discrete_action import PyRobotDiscreteActions
