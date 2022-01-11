@@ -77,6 +77,7 @@ DEFAULT_CFG.TASK.MOTION_ERRORS.TYPE = "MotionErrorsMeasure"
 DEFAULT_CFG.TASK.ACTIONS = habitat.Config()
 DEFAULT_CFG.TASK.ACTIONS.GOTO = habitat.Config()
 DEFAULT_CFG.TASK.ACTIONS.GOTO.TYPE = "ROSGotoAction"
+DEFAULT_CFG.TASK.ACTIONS.GOTO.MAX_DISTANCE_LIMIT = -1
 
 
 def merge_config(orig_cfg: habitat.Config) -> habitat.Config:

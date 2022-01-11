@@ -270,27 +270,42 @@ class HabitatInterfaceROSNode:
             return None
         return pose
 
-    def get_distance(self, src, dst):
+    def _get_raw_plan(self, src, dst):
         start = self._make_pose_stamped(src)
         if start is None:
-            return np.inf
+            return []
         goal = self._make_pose_stamped(dst)
         if goal is None:
-            return np.inf
-
+            return []
         res = self.get_plan_proxy(start, goal, self.cfg.MOVE_BASE_PLAN_TOL)
-        if res.plan.poses:
-            dist = 0
-            prv_x = res.plan.poses[0].pose.position.x
-            prv_y = res.plan.poses[0].pose.position.y
-            for pose in res.plan.poses[1:]:
-                x = pose.pose.position.x
-                y = pose.pose.position.y
-                dist += np.sqrt((x - prv_x)**2 + (y - prv_y)**2)
-                prv_x, prv_y = x, y
-            return dist
+        return res.plan.poses
+
+    def get_distance(self, src, dst):
+        plan = self._get_raw_plan()
+        if plan:
+            poses = np.array([[(p := pose.pose.position).x, p.y, p.z] for pose in plan])
+            return np.sqrt(((poses[1:] - poses[:-1])**2).sum(axis=1))
         else:
             return np.inf
+
+    def get_shortest_path(self, src, dst):
+        plan = self._get_raw_plan()
+        if plan:
+            try:
+                shortest_path = []
+                for pose in plan:
+                    pose = self.tf_buffer.transform(pose, self.cfg.TF_HABITAT_REF_FRAME,
+                                                    self.tf_timeout)
+                    p = pose.pose.position
+                    shortest_path.append([p.x, p.y, p.z])
+                return shortest_path
+            except (tf2_ros.LookupException,
+                    tf2_ros.ConnectivityException,
+                    tf2_ros.ExtrapolationException) as e:
+                logging.warn(e)
+                return None
+        else:
+            return None
 
     @property
     def can_tilt_cam(self):
