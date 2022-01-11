@@ -68,9 +68,10 @@ class HabitatInterfaceROSNode:
 
         try:
             rospy.wait_for_service(cfg.DYNAMIXEL_SERVICE, timeout)
+            self.dynamixel_cmd_proxy = rospy.ServiceProxy(cfg.DYNAMIXEL_SERVICE,
+                                                          DynamixelCommand)
         except rospy.ROSException:
-            raise RuntimeError("Unable to connect to dynamixel service.")
-        self.dynamixel_cmd_proxy = rospy.ServiceProxy(cfg.DYNAMIXEL_SERVICE, DynamixelCommand)
+            self.dynamixel_cmd_proxy = None
         self.dynamixel_sub = rospy.Subscriber(cfg.DYNAMIXEL_STATE_TOPIC,
                                               DynamixelStateList,
                                               self.on_dynamixel_state)
@@ -291,7 +292,14 @@ class HabitatInterfaceROSNode:
         else:
             return np.inf
 
+    @property
+    def can_tilt_cam(self):
+        return self.dynamixel_cmd_proxy is not None
+
     def set_camera_tilt(self, tilt):
+        if self.dynamixel_cmd_proxy is None:
+            return False
+
         self.tilt_reached_event.clear()
         self.tilt_target_value = int(self.cfg.DYNAMIXEL_TICK_OFFSET
                                      - self.cfg.DYNAMIXEL_TICK_PER_RAD * tilt)

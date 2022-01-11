@@ -82,8 +82,14 @@ class ROSRobot(Simulator):
                                           ROSDepthSensor(config=config.DEPTH_SENSOR)])
         if config.ACTION_SPACE_CONFIG == "v0":
             self._action_space = spaces.Discrete(4)
-        else: # v1 or pyrobotnoisy
-            self._action_space = spaces.Discrete(6)
+        elif config.ACTION_SPACE_CONFIG == "v1":
+            if self.intf_node.can_tilt_cam:
+                self._action_space = spaces.Discrete(6)
+            else:
+                habitat.logger.warning("Camera tilt control not available."
+                                       + "Falling back to action space config v0."
+                                       + "Action TILT_UP and TILT_DOWN will be ignored.")
+                self._action_space = spaces.Discrete(4)
 
         self.has_published_goal = False
         self.previous_step_collided = False
