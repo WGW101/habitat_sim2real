@@ -2,9 +2,13 @@ from .utils.visualization import BaseSimulatorViewer
 from .utils.perlin import perlin_1d, perlin_2d
 from .config.default import merge_config, get_config
 from .sims.sidechain_sim.sidechain_sim import make_sidechain
-from .tasks.real.motion_error_measure import MotionErrorMeasure
-from .tasks.nav.noisy_pointgoal import NoisyPointGoalWithGPSAndCompassSensor
+from .tasks.nav.noisy_loc_sensors import (NoisyEpisodicCompassSensor,
+                                          NoisyEpisodicGPSSensor,
+                                          NoisyPointGoalWithGPSAndCompassSensor)
 from .tasks.nav.ego_map import EgoMapSensor
+from .tasks.real.motion_error_measure import MotionErrorsMeasure
+from .tasks.nav.goto_action import ROSGotoAction
+
 
 try:
     from .sims.pyrobot.pyrobot_discrete_action import PyRobotDiscreteActions
@@ -13,6 +17,7 @@ except ImportError as e:
     class PyRobotDiscreteActions:
         def __init__(*args, **kwargs):
             raise pyrobot_import_error
+
 
 try:
     from .sims.habitat_simulator.realistic_depth_sensor import RealisticHabitatSimDepthSensor
@@ -25,6 +30,7 @@ except ImportError as e:
     class HabitatSimLaserScanSensor:
         def __init__(*args, **kwargs):
             raise habitat_sim_import_error
+
 
 try:
     from .sims.ros.rosrobot_sim import ROSRobot
@@ -48,6 +54,7 @@ except ImportError as e:
     class ROSGotoAction:
         def __init__(self, *args, **kwargs):
             raise ros_import_error
+
 
 try:
     from .sims.jetbot.jetbot_sim import Jetbot

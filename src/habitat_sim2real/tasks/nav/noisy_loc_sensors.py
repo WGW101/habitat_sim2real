@@ -5,7 +5,23 @@ import quaternion
 from habitat.core.registry import registry
 from habitat.core.simulator import Observations
 from habitat.core.dataset import Episode
-from habitat.tasks.nav.nav import PointGoalSensor
+from habitat.tasks.nav.nav import EpisodicCompassSensor, EpisodicGPSSensor, PointGoalSensor
+
+
+@registry.register_sensor
+class NoisyEpisodicCompassSensor(EpisodicCompassSensor):
+    def get_observation(self, *args: Any, **kwargs: Any) -> np.ndarray:
+        yaw = super().get_observation(*args, **kwargs)
+        noise = np.random.normal(0, self.config.ROTATION_STD, (1,))
+        return (yaw + noise).astype(np.float32)
+
+
+@registry.register_sensor
+class NoisyEpisodicGPSSensor(EpisodicGPSSensor):
+    def get_observation(self, *args: Any, **kwargs: Any) -> np.ndarray:
+        pos = super().get_observation(*args, **kwargs)
+        noise = np.random.normal(0, self.config.POSITION_STD, pos.shape)
+        return (pos + noise).astype(np.float32)
 
 
 @registry.register_sensor
@@ -31,4 +47,3 @@ class NoisyPointGoalWithGPSAndCompassSensor(PointGoalSensor):
         goal_position = np.array(episode.goals[0].position, dtype=np.float32)
 
         return self._compute_pointgoal(agent_position, rotation_world_agent, goal_position)
-

@@ -17,7 +17,7 @@ class MotionErrors(NamedTuple):
 
 
 @registry.register_measure
-class MotionErrorMeasure(Measure):
+class MotionErrorsMeasure(Measure):
     _sim: Simulator
     _task: EmbodiedTask
     _forward_cmd: float
@@ -37,7 +37,7 @@ class MotionErrorMeasure(Measure):
         self._last_rot = None
 
     def _get_uuid(self, *args: Any, **kwargs: Any) -> str:
-        return "motion_error"
+        return "motion_errors"
 
     def _get_pos_rot(self) -> Tuple[np.ndarray, np.quaternion]:
         s = self._sim.get_agent_state()

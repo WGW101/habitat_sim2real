@@ -1,4 +1,4 @@
-from typing import ClassVar
+from typing import Any
 
 import numpy as np
 import quaternion
@@ -13,9 +13,9 @@ from habitat.core.simulator import Observations
 class ROSGotoAction(SimulatorTaskAction):
     @property
     def action_space(self) -> spaces.Dict:
-        return spaces.Dict({"x": spaces.Box(-np.inf, np.inf, size=(1,), dtype=np.float32),
-                            "z": spaces.Box(-np.inf, np.inf, size=(1,), dtype=np.float32),
-                            "yaw": spaces.Box(-np.pi, np.pi, size=(1,), dtype=np.float32)})
+        return spaces.Dict({"x": spaces.Box(-np.inf, np.inf, (1,), np.float32),
+                            "z": spaces.Box(-np.inf, np.inf, (1,), np.float32),
+                            "yaw": spaces.Box(-np.pi, np.pi, (1,), np.float32)})
 
     def step(self, x: float, z: float, yaw: float, *args: Any, **kwargs: Any) -> Observations:
         y = self._sim.get_agent_state().position[1]
