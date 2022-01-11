@@ -281,7 +281,7 @@ class HabitatInterfaceROSNode:
         return res.plan.poses
 
     def get_distance(self, src, dst):
-        plan = self._get_raw_plan()
+        plan = self._get_raw_plan(src, dst)
         if plan:
             poses = np.array([[(p := pose.pose.position).x, p.y, p.z] for pose in plan])
             return np.sqrt(((poses[1:] - poses[:-1])**2).sum(axis=1))
@@ -289,7 +289,7 @@ class HabitatInterfaceROSNode:
             return np.inf
 
     def get_shortest_path(self, src, dst):
-        plan = self._get_raw_plan()
+        plan = self._get_raw_plan(src, dst)
         if plan:
             try:
                 shortest_path = []
@@ -367,7 +367,8 @@ class HabitatInterfaceROSNode:
 
     def publish_episode_goal(self, pos):
         pose = self._make_pose_stamped(pos)
-        self.episode_goal_pub.publish(pose)
+        if pose is not None:
+            self.episode_goal_pub.publish(pose)
 
     def seed_rng(self, seed):
         self.rng = np.random.default_rng(seed)

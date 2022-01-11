@@ -86,8 +86,8 @@ class ROSRobot(Simulator):
             if self.intf_node.can_tilt_cam:
                 self._action_space = spaces.Discrete(6)
             else:
-                habitat.logger.warning("Camera tilt control not available."
-                                       + "Falling back to action space config v0."
+                habitat.logger.warning("Camera tilt control not available. "
+                                       + "Falling back to action space config v0. "
                                        + "Action TILT_UP and TILT_DOWN will be ignored.")
                 self._action_space = spaces.Discrete(4)
 
