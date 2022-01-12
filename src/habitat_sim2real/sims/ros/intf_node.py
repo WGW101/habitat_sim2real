@@ -137,8 +137,9 @@ class HabitatInterfaceROSNode:
         grid = np.array(occ_grid_msg.data).reshape(occ_grid_msg.info.height,
                                                    occ_grid_msg.info.width)
         grid = grid[::-1, ::-1].T
-        free_points = np.stack(np.nonzero((grid < self.cfg.MAP_FREE_THRESH)
-                                          & (grid > -1)), -1)
+        free_points = np.stack(np.nonzero(
+            (grid < self.cfg.MAP_FREE_THRESH) & (grid > -1)
+        ), -1)
 
         with self.map_lock:
             self.map_resolution = occ_grid_msg.info.resolution
@@ -284,7 +285,7 @@ class HabitatInterfaceROSNode:
         plan = self._get_raw_plan(src, dst)
         if plan:
             poses = np.array([[(p := pose.pose.position).x, p.y, p.z] for pose in plan])
-            return np.sqrt(((poses[1:] - poses[:-1])**2).sum(axis=1))
+            return np.sqrt(((poses[1:] - poses[:-1])**2).sum(axis=1)).sum()
         else:
             return np.inf
 

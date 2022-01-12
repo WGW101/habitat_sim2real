@@ -55,20 +55,14 @@ class DummyROSAgent:
 class DummyROSPathfinder:
     def __init__(self, intf_node):
         self._intf_node = intf_node
-        self._bounds = None
-        self._topdown = None
 
     def get_bounds(self):
-        if self._bounds is None:
-            self._bounds = self._intf_node.get_map_bounds()
-        return self._bounds
+        return self._intf_node.get_map_bounds()
 
     def get_topdown_view(self, *args, **kwargs):
-        if self._topdown is None:
-            thresh = self._intf_node.cfg.MAP_FREE_THRESH
-            grid = self._intf_node.get_map_grid()
-            self._topdown = (grid < thresh) & (grid > -1)
-        return self._topdown
+        thresh = self._intf_node.cfg.MAP_FREE_THRESH
+        grid = self._intf_node.get_map_grid()
+        return (grid < thresh) & (grid > -1)
 
 
 @habitat.registry.register_simulator(name="ROS-Robot-v0")
@@ -170,6 +164,7 @@ class ROSRobot(Simulator):
         except TypeError:
             destinations = [destinations]
         # Kinda hacky... Sim has no way to know the goal when a new episode starts
+        # (would require episode to be given as arg in reset)
         # But the first call to geodesic_distance is for the distance_to_goal measure...
         if not self.has_published_goal:
             self.publish_episode_goal(destinations[0])

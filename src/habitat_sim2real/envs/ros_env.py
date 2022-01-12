@@ -23,8 +23,9 @@ class ROSEnv(Env):
         self.t_str = time.strftime("%y-%m-%d_%H-%M-%S")
 
     def close(self):
-        if self._episodes[-1].episode_id != self._current_episode.episode_id:
-            self._episodes.append(self._current_episode)
+        if not self._episodes \
+            or self._episodes[-1].episode_id != self._current_episode.episode_id:
+                self._episodes.append(self._current_episode)
         outpath = f"data/datasets/pointnav/real_online_demo/{self.t_str}/val/val.json.gz"
         os.makedirs(os.path.dirname(outpath))
         with gzip.open(outpath, 'wt') as f:
