@@ -40,7 +40,7 @@ class EgoMapSensor(Sensor):
         mppx = self.config.METERS_PER_PIXEL
         if self.config.ONLINE_MAP or self._last_ep_id != episode.episode_id:
             self._topdown_map = maps.get_topdown_map_from_sim(
-                self._sim, draw_border=False, meters_per_pixel=mppx
+                self._sim, draw_border=not self.config.ONLINE_MAP, meters_per_pixel=mppx
             )
             self._fog = np.zeros_like(self._topdown_map)
 

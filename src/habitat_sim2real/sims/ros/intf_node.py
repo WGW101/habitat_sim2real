@@ -27,8 +27,8 @@ class HabitatInterfaceROSNode:
 
         try:
             rospy.get_published_topics()
-        except ConnectionRefusedError:
-            raise RuntimeError("Unable to connect to ROS master.")
+        except ConnectionRefusedError as e:
+            raise RuntimeError("Unable to connect to ROS master.") from e
         rospy.init_node(cfg.NODE_NAME)
 
         self.tf_buffer = tf2_ros.Buffer()
@@ -81,8 +81,8 @@ class HabitatInterfaceROSNode:
 
         try:
             rospy.wait_for_service(cfg.MOVE_BASE_PLAN_SERVICE, timeout)
-        except rospy.ROSException:
-            raise RuntimeError("Unable to connect to get_plan service.")
+        except rospy.ROSException as e:
+            raise RuntimeError("Unable to connect to get_plan service.") from e
         self.get_plan_proxy = rospy.ServiceProxy(cfg.MOVE_BASE_PLAN_SERVICE, GetPlan)
 
         self.episode_goal_pub = rospy.Publisher("habitat_episode_goal", PoseStamped,

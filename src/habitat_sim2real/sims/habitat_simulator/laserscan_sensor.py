@@ -101,7 +101,7 @@ class HabitatSimLaserScanSensor(Sensor):
 
 
 @registry.register_simulator(name="Sim-v1")
-class HabitatSim(HabitatSim):
+class HabitatSimCustom(HabitatSim):
     def create_sim_config(self, _sensor_suite: SensorSuite) -> habitat_sim.Configuration:
         scan_sensor = _sensor_suite.sensors.pop(HabitatSimLaserScanSensor.cls_uuid, None)
         cfg = super().create_sim_config(_sensor_suite)

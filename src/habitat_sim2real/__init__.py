@@ -21,7 +21,9 @@ except ImportError as e:
 
 try:
     from .sims.habitat_simulator.realistic_depth_sensor import RealisticHabitatSimDepthSensor
-    from .sims.habitat_simulator.laserscan_sensor import HabitatSimLaserScanSensor, HabitatSim
+    from .sims.habitat_simulator.laserscan_sensor import (
+        HabitatSimLaserScanSensor, HabitatSimCustom
+    )
 except ImportError as e:
     habitat_sim_import_error = e
     class RealisticHabitatSimDepthSensor:
