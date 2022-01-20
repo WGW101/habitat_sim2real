@@ -11,8 +11,6 @@ from habitat.datasets import make_dataset
 from habitat_baselines.common.environments import NavRLEnv
 from habitat_baselines.common.baseline_registry import baseline_registry
 
-from habitat_sim2real.sims.ros.default_cfg import merge_ros_config
-
 
 class ROSEnv(Env):
     def __init__(self, config, *args, **kwargs):

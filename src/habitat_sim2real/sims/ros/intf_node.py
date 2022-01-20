@@ -7,7 +7,7 @@ import message_filters
 import cv_bridge
 import tf2_ros
 import tf2_geometry_msgs
-import tf_conversions
+from tf.transformations import quaternion_multiply
 import actionlib
 
 from geometry_msgs.msg import PoseStamped, TransformStamped, PointStamped
@@ -255,7 +255,7 @@ class HabitatInterfaceROSNode:
 
         tf_q = (tf.transform.rotation.x, tf.transform.rotation.y,
                 tf.transform.rotation.z, tf.transform.rotation.w)
-        rot = tf_conversions.transformations.quaternion_multiply(rot, tf_q)
+        rot = quaternion_multiply(rot, tf_q)
         pose.pose.orientation.x = rot[0]
         pose.pose.orientation.y = rot[1]
         pose.pose.orientation.z = rot[2]

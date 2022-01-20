@@ -82,7 +82,7 @@ class ROSRobot(Simulator):
             else:
                 habitat.logger.warning("Camera tilt control not available. "
                                        + "Falling back to action space config v0. "
-                                       + "Action TILT_UP and TILT_DOWN will be ignored.")
+                                       + "Actions TILT_UP and TILT_DOWN will be ignored.")
                 self._action_space = spaces.Discrete(4)
 
         self.has_published_goal = False
@@ -167,7 +167,7 @@ class ROSRobot(Simulator):
         # (would require episode to be given as arg in reset)
         # But the first call to geodesic_distance is for the distance_to_goal measure...
         if not self.has_published_goal:
-            self.publish_episode_goal(destinations[0])
+            self.intf_node.publish_episode_goal(destinations[0])
             self.has_published_goal = True
         return min(self.intf_node.get_distance(src, dst) for dst in destinations)
 
@@ -184,6 +184,3 @@ class ROSRobot(Simulator):
     @property
     def forward_vector(self):
         return np.array([0.0, 0.0, -1.0])
-
-    def publish_episode_goal(self, goal_pos):
-        self.intf_node.publish_episode_goal(goal_pos)
