@@ -36,12 +36,20 @@ except ImportError as e:
 
 try:
     from .sims.ros.rosrobot_sim import ROSRobot
+    from .sims.ros.ros_mngr import ROSManager
+    from .sims.ros.ros_habsim_sim import ROSHabitatSim
     from .sims.ros.intf_node import HabitatInterfaceROSNode
     from .envs.ros_env import ROSEnv, ROSNavRLEnv
     from .tasks.nav.goto_action import ROSGotoAction
 except ImportError as e:
     ros_import_error = e
     class ROSRobot:
+        def __init__(self, *args, **kwargs):
+            raise ros_import_error
+    class ROSManager:
+        def __init__(self, *args, **kwargs):
+            raise ros_import_error
+    class ROSHabitatSim:
         def __init__(self, *args, **kwargs):
             raise ros_import_error
     class HabitatInterfaceROSNode:
