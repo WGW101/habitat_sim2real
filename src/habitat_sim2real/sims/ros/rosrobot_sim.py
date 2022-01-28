@@ -1,9 +1,12 @@
 import numpy as np
-import cv2
 import quaternion as quat
+import cv2
+import gym
 
 import habitat
-from habitat.core.simulator import Simulator, RGBSensor, DepthSensor, SensorSuite
+from habitat.core.simulator import (
+    Simulator, RGBSensor, DepthSensor, SensorSuite, Sensor, SensorTypes
+)
 from habitat.utils.visualizations.maps import (
     MAP_INVALID_POINT, MAP_VALID_POINT, MAP_BORDER_INDICATOR
 )
@@ -39,6 +42,31 @@ class ROSRGBSensor(RGBSensor):
     def get_observation(self, sim_obs):
         out = cv2.resize(sim_obs[0], (self.config.WIDTH, self.config.HEIGHT))
         return out
+
+
+class ROSScanSensor(Sensor):
+    def __init__(self, config, *args, **kwargs):
+        self.config = config
+        self.angles = np.arange(config.MIN_ANGLE, config.MAX_ANGLE, config.INC_ANGLE)
+        self.num_rays = self.angles.shape[0]
+        super().__init__(*args, config=config, **kwargs)
+
+    def _get_uuid(self, *args, **kwargs):
+        return "scan"
+
+    def _get_sensor_type(self, *args, **kwargs):
+        return SensorTypes.DEPTH
+
+    def _get_observation_space(self, *args, **kwargs):
+        return gym.spaces.Box(np.array([[self.config.MIN_RANGE, self.config.MIN_ANGLE]
+                                        for _ in range(self.num_rays)], dtype=np.float32),
+                              np.array([[self.config.MAX_RANGE, self.config.MAX_ANGLE]
+                                        for _ in range(self.num_rays)], dtype=np.float32),
+                              dtype=np.float32)
+
+    def get_observation(self, sim_obs):
+        ranges = np.clip(sim_obs[2], self.config.MIN_RANGE, self.config.MAX_RANGE)
+        return np.stack((ranges, self.angles), -1)
 
 
 class AgentState:
@@ -79,7 +107,8 @@ class ROSRobot(Simulator):
         self.pathfinder = DummyROSPathfinder(self.intf_node)
         self.cur_camera_tilt = 0
         self._sensor_suite = SensorSuite([ROSRGBSensor(config=config.RGB_SENSOR),
-                                          ROSDepthSensor(config=config.DEPTH_SENSOR)])
+                                          ROSDepthSensor(config=config.DEPTH_SENSOR),
+                                          ROSScanSensor(config=config.SCAN_SENSOR)])
         if config.ACTION_SPACE_CONFIG == "v0":
             self._action_space = spaces.Discrete(4)
         elif config.ACTION_SPACE_CONFIG == "v1":
@@ -121,8 +150,8 @@ class ROSRobot(Simulator):
         self.intf_node.set_camera_tilt(self.habitat_config.RGB_SENSOR.ORIENTATION[0])
         self.intf_node.clear_collided()
         self.previous_step_collided = False
-        raw_images = self.intf_node.get_raw_images()
-        return self._sensor_suite.get_observations(raw_images)
+        raw_obs = self.intf_node.get_raw_observations()
+        return self._sensor_suite.get_observations(raw_obs)
 
     def step(self, action):
         if action == 0: # STOP
@@ -147,13 +176,13 @@ class ROSRobot(Simulator):
             self.intf_node.clear_collided()
             self.previous_step_collided = True
 
-        raw_images = self.intf_node.get_raw_images()
-        return self._sensor_suite.get_observations(raw_images)
+        raw_obs = self.intf_node.get_raw_observations()
+        return self._sensor_suite.get_observations(raw_obs)
 
     def get_observations_at(self, position=None, rotation=None, keep_agent_at_new_pose=False):
         if position is None and rotation is None:
-            raw_images = self.intf_node.get_raw_images()
-            return self._sensor_suite.get_observations(raw_images)
+            raw_obs = self.intf_node.get_raw_observations()
+            return self._sensor_suite.get_observations(raw_obs)
         else:
             raise RuntimeError("Can only query observations for current pose on a real robot.")
 

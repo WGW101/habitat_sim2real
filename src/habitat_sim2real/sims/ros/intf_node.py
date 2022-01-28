@@ -11,7 +11,7 @@ from tf.transformations import quaternion_multiply
 import actionlib
 
 from geometry_msgs.msg import PoseStamped, TransformStamped, PointStamped
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, LaserScan
 from nav_msgs.msg import OccupancyGrid
 from nav_msgs.srv import GetPlan
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
@@ -44,9 +44,15 @@ class HabitatInterfaceROSNode:
                                                          cfg.IMAGE_SYNC_QUEUE_SIZE)
         self.img_sync.registerCallback(self.on_img)
         self.bridge = cv_bridge.CvBridge()
-        self.raw_images_buffer = None
+        self.raw_color_buffer = None
+        self.raw_depth_buffer = None
         self.img_buffer_lock = threading.Lock()
         self.has_first_images = threading.Event()
+
+        self.scan_sub = rospy.Subscriber(cfg.SCAN_TOPIC, LaserScan, self.on_scan)
+        self.scan_buffer = None
+        self.scan_buffer_lock = threading.Lock()
+        self.has_first_scan = threading.Event()
 
         self.map_sub = rospy.Subscriber(cfg.MAP_TOPIC, OccupancyGrid, self.on_map)
         self.map_resolution = None
@@ -103,14 +109,23 @@ class HabitatInterfaceROSNode:
             logging.warn(e)
             return
         with self.img_buffer_lock:
-            self.raw_images_buffer = (raw_color, raw_depth)
+            self.raw_color_buffer = raw_color
+            self.raw_depth_buffer = raw_depth
         self.has_first_images.set()
 
-    def get_raw_images(self):
+    def on_scan(self, scan_msg):
+        with self.scan_buffer_lock:
+            self.raw_scan_buffer = np.array(scan_msg.ranges, dtype=np.float32)
+        self.has_first_scan.set()
+
+    def get_raw_observations(self):
         if not self.has_first_images.wait(self.cfg.GETTER_TIMEOUT):
             raise RuntimeError("Timed out waiting for raw image.")
+        if not self.has_first_scan.wait(self.cfg.GETTER_TIMEOUT):
+            raise RuntimeError("Timed out waiting for raw scan.")
         with self.img_buffer_lock:
-            return self.raw_images_buffer
+            with self.scan_buffer_lock:
+                return (self.raw_color_buffer, self.raw_depth_buffer, self.raw_scan_buffer)
 
     def on_map(self, occ_grid_msg):
         try:

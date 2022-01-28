@@ -16,8 +16,8 @@ class ROSHabitatSim(ROSRobot):
 
     def reset(self) -> None:
         self.has_published_goal = False
-        raw_images = self.intf_node.get_raw_images()
-        return self._sensor_suite.get_observations(raw_images)
+        raw_obs = self.intf_node.get_raw_observations()
+        return self._sensor_suite.get_observations(raw_obs)
 
     def reconfigure(self, habitat_config: Config) -> None:
         super().reconfigure(habitat_config)
