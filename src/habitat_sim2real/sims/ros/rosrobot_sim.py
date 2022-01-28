@@ -4,6 +4,9 @@ import quaternion as quat
 
 import habitat
 from habitat.core.simulator import Simulator, RGBSensor, DepthSensor, SensorSuite
+from habitat.utils.visualizations.maps import (
+    MAP_INVALID_POINT, MAP_VALID_POINT, MAP_BORDER_INDICATOR
+)
 from gym import spaces
 
 from .intf_node import HabitatInterfaceROSNode
@@ -62,7 +65,10 @@ class DummyROSPathfinder:
     def get_topdown_view(self, *args, **kwargs):
         thresh = self._intf_node.cfg.MAP_FREE_THRESH
         grid = self._intf_node.get_map_grid()
-        return (grid < thresh) & (grid > -1)
+        topdown = np.full(grid.shape, MAP_INVALID_POINT, dtype=np.uint8)
+        topdown[(grid >= 0) & (grid < thresh)] = MAP_VALID_POINT
+        topdown[grid >= thresh] = MAP_BORDER_INDICATOR
+        return todpown
 
 
 @habitat.registry.register_simulator(name="ROS-Robot-v0")
