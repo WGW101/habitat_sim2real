@@ -42,30 +42,30 @@ class HabitatInterfaceROSNode:
         self.depth_sub = message_filters.Subscriber(cfg.DEPTH_IMAGE_TOPIC, Image)
         self.img_sync = message_filters.TimeSynchronizer([self.color_sub, self.depth_sub],
                                                          cfg.IMAGE_SYNC_QUEUE_SIZE)
-        self.img_sync.registerCallback(self.on_img)
         self.bridge = cv_bridge.CvBridge()
         self.raw_color_buffer = None
         self.raw_depth_buffer = None
         self.img_buffer_lock = threading.Lock()
         self.has_first_images = threading.Event()
+        self.img_sync.registerCallback(self.on_img)
 
-        self.scan_sub = rospy.Subscriber(cfg.SCAN_TOPIC, LaserScan, self.on_scan)
         self.scan_buffer = None
         self.scan_buffer_lock = threading.Lock()
         self.has_first_scan = threading.Event()
+        self.scan_sub = rospy.Subscriber(cfg.SCAN_TOPIC, LaserScan, self.on_scan)
 
-        self.map_sub = rospy.Subscriber(cfg.MAP_TOPIC, OccupancyGrid, self.on_map)
         self.map_resolution = None
         self.map_origin_transform = None
         self.map_grid = None
         self.map_free_points = None
         self.map_lock = threading.Lock()
         self.has_first_map = threading.Event()
+        self.map_sub = rospy.Subscriber(cfg.MAP_TOPIC, OccupancyGrid, self.on_map)
 
-        self.bump_sub = rospy.Subscriber(cfg.BUMPER_TOPIC, BumperEvent, self.on_bump)
         self.collided_lock = threading.Lock()
         self.collided = False
         self.cancel_move_on_bump = True
+        self.bump_sub = rospy.Subscriber(cfg.BUMPER_TOPIC, BumperEvent, self.on_bump)
 
         self.move_base_client = actionlib.SimpleActionClient(cfg.MOVE_BASE_ACTION_SERVER,
                                                              MoveBaseAction)
@@ -78,12 +78,12 @@ class HabitatInterfaceROSNode:
                                                           DynamixelCommand)
         except rospy.ROSException:
             self.dynamixel_cmd_proxy = None
-        self.dynamixel_sub = rospy.Subscriber(cfg.DYNAMIXEL_STATE_TOPIC,
-                                              DynamixelStateList,
-                                              self.on_dynamixel_state)
         self.tilt_target_value = None
         self.tilt_target_event = threading.Event()
         self.tilt_reached_event = threading.Event()
+        self.dynamixel_sub = rospy.Subscriber(cfg.DYNAMIXEL_STATE_TOPIC,
+                                              DynamixelStateList,
+                                              self.on_dynamixel_state)
 
         try:
             rospy.wait_for_service(cfg.MOVE_BASE_PLAN_SERVICE, timeout)
@@ -96,10 +96,10 @@ class HabitatInterfaceROSNode:
 
         self.rng = np.random.default_rng()
 
-        self.pt_sub = rospy.Subscriber("/clicked_point", PointStamped, self.on_point)
         self.point_lock = threading.Lock()
         self.last_point = None
         self.has_new_point = threading.Event()
+        self.pt_sub = rospy.Subscriber("/clicked_point", PointStamped, self.on_point)
 
     def on_img(self, color_img_msg, depth_img_msg):
         try:
