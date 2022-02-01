@@ -96,7 +96,7 @@ class DummyROSPathfinder:
         topdown = np.full(grid.shape, MAP_INVALID_POINT, dtype=np.uint8)
         topdown[(grid >= 0) & (grid < thresh)] = MAP_VALID_POINT
         topdown[grid >= thresh] = MAP_BORDER_INDICATOR
-        return todpown
+        return topdown
 
 
 @habitat.registry.register_simulator(name="ROS-Robot-v0")

@@ -1,14 +1,15 @@
-from typing import List, Optional
+from typing import Tuple, List, Optional
 import threading
 
 import rospy
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import OccupancyGrid
-from habitat_sim_ros.srv import LoadScene, RespawnAgent
+from habitat_sim_ros.srv import LoadScene, RespawnAgent, SpawnObject
 from std_srvs.srv import Empty
 import roslaunch
 
 from habitat.config.default import Config
+from habitat.tasks.nav.spawned_objectnav import SpawnedObjectGoal
 
 
 class ROSManager:
@@ -18,6 +19,8 @@ class ROSManager:
     sim_proc: Optional[roslaunch.pmon.Process] = None
     sim_load_scene: rospy.ServiceProxy
     sim_respawn_agent: rospy.ServiceProxy
+    sim_spawn_object: rospy.ServiceProxy
+    sim_clear_objects: rospy.ServiceProxy
     slam_node: roslaunch.core.Node
     slam_proc: Optional[roslaunch.pmon.Process] = None
     slam_restarted_event: threading.Event
@@ -37,6 +40,8 @@ class ROSManager:
         )
         self.sim_load_scene = rospy.ServiceProxy("/habitat_sim/load_scene", LoadScene)
         self.sim_respawn_agent = rospy.ServiceProxy("/habitat_sim/respawn_agent", RespawnAgent)
+        self.sim_spawn_object = rospy.ServiceProxy("/habitat_sim/spawn_object", SpawnObject)
+        self.sim_clear_objects = rospy.ServiceProxy("/habitat_sim/clear_objects", Empty)
 
         self.slam_node = roslaunch.core.Node(
             "slam_toolbox", "async_slam_toolbox_node", "slam_toolbox",
@@ -105,9 +110,27 @@ class ROSManager:
         p.orientation.w = rotation[3]
         return p
 
-    def reconfigure_sim(self, sim_cfg: Config):
+    def reconfigure_sim(self, sim_cfg: Config) -> None:
         self.sim_load_scene(sim_cfg.SCENE)
         if sim_cfg.AGENT_0.IS_SET_START_STATE:
             self.sim_respawn_agent(ROSManager._make_pose(
                 sim_cfg.AGENT_0.START_POSITION, sim_cfg.AGENT_0.START_ROTATION
             ))
+
+    def spawn_object(self,
+        tmpl_id: str,
+        position: Tuple[float, float, float],
+        rotation: Tuple[float, float, float, float],
+    ) -> None:
+        p = Pose()
+        p.position.x = -position[2]
+        p.position.y = -position[0]
+        p.position.z = position[1]
+        p.orientation.x = -rotation[2]
+        p.orientation.y = -rotation[0]
+        p.orientation.z = rotation[1]
+        p.orientation.w = rotation[3]
+        self.sim_spawn_object(tmpl_id, p)
+
+    def clear_objects(self):
+        self.sim_clear_objects()
