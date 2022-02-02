@@ -319,9 +319,7 @@ class HabitatInterfaceROSNode:
                     tf2_ros.ConnectivityException,
                     tf2_ros.ExtrapolationException) as e:
                 logging.warn(e)
-                return None
-        else:
-            return None
+        return []
 
     @property
     def can_tilt_cam(self):
