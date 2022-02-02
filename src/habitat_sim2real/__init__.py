@@ -40,7 +40,6 @@ try:
     from .sims.ros.ros_habsim_sim import ROSHabitatSim
     from .sims.ros.intf_node import HabitatInterfaceROSNode
     from .envs.ros_env import ROSEnv, ROSNavRLEnv
-    from .tasks.nav.goto_action import ROSGotoAction
 except ImportError as e:
     ros_import_error = e
     class ROSRobot:
