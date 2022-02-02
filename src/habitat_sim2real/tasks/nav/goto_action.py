@@ -5,33 +5,44 @@ import quaternion
 from gym import spaces
 
 from habitat.core.registry import registry
-from habitat.core.embodied_task import SimulatorTaskAction
+from habitat.core.dataset import Episode
+from habitat.core.embodied_task import EmbodiedTask, SimulatorTaskAction
 from habitat.core.simulator import Observations
 
 
 @registry.register_task_action
-class ROSGotoAction(SimulatorTaskAction):
+class GotoAction(SimulatorTaskAction):
     @property
     def action_space(self) -> spaces.Dict:
         return spaces.Dict({"x": spaces.Box(-np.inf, np.inf, (1,), np.float32),
                             "y": spaces.Box(-np.inf, np.inf, (1,), np.float32),
                             "yaw": spaces.Box(-np.pi, np.pi, (1,), np.float32)})
 
+    def reset(self, episode: Episode, task: EmbodiedTask) -> None:
+        self.start_pos = np.array(episode.start_position)
+        self.start_rot = np.quaternion(episode.start_rotation[3], *episode.start_rotation[:3])
+
     def step(self, x: float, y: float, yaw: float = 0,
              *args: Any, **kwargs: Any) -> Observations:
         src = self._sim.get_agent_state().position
-        target_pos = [y, src[1], -x]
-        target_rot = [0, np.sin(0.5 * yaw), 0, np.cos(0.5 * yaw)]
+        pos = (self.start_rot * np.quaternion(0, y, src[1], -x) * self.start_rot.conj()).vec 
+        pos += self.start_pos
+        rot = self.start_rot * np.quaternion(np.cos(0.5 * yaw), 0, np.sin(0.5 * yaw), 0)
         if self._config.MAX_DISTANCE_LIMIT > 0:
-            shortest_path = self._sim.intf_node.get_shortest_path(src, target_pos)
-            cumul = 0
-            prv = shortest_path[0]
-            for dst in shortest_path[1:]:
-                cumul += np.sqrt(((dst - prv)**2).sum())
-                if cumul >= self._config.MAX_DISTANCE_LIMIT:
+            path = np.array(self._sim.get_straight_shortest_path_points(src, pos))
+            remain = self._config.MAX_DISTANCE_LIMIT
+            prv = path[0]
+            limit = False
+            for nxt in path[1:]:
+                seg = nxt - prv
+                d = np.linalg.norm(seg)
+                if d > remain:
+                    limit = True
                     break
-            self._sim.intf_node.move_to_absolute(dst, target_rot)
-        else:
-            self._sim.intf_node.move_to_absolute(target_pos, target_rot)
-        raw_images = self._sim.intf_node.get_raw_images()
-        return self._sim._sensor_suite.get_observations(raw_images)
+                remain -= d
+                prv = nxt
+            if limit:
+                pos = prv + seg * remain / d
+                yaw = np.arctan2(-seg[0], -seg[2])
+                rot = np.quaternion(np.cos(0.5 * yaw), 0, np.sin(0.5 * yaw), 0)
+        return self._sim.get_observations_at(pos, rot, True)

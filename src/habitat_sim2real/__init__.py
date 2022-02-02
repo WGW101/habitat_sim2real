@@ -7,7 +7,7 @@ from .tasks.nav.noisy_loc_sensors import (NoisyEpisodicCompassSensor,
                                           NoisyPointGoalWithGPSAndCompassSensor)
 from .tasks.nav.ego_map import EgoMapSensor
 from .tasks.real.motion_error_measure import MotionErrorsMeasure
-from .tasks.nav.goto_action import ROSGotoAction
+from .tasks.nav.goto_action import GotoAction
 
 
 try:
