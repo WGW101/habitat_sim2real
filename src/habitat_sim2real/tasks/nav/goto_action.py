@@ -14,13 +14,13 @@ class ROSGotoAction(SimulatorTaskAction):
     @property
     def action_space(self) -> spaces.Dict:
         return spaces.Dict({"x": spaces.Box(-np.inf, np.inf, (1,), np.float32),
-                            "z": spaces.Box(-np.inf, np.inf, (1,), np.float32),
+                            "y": spaces.Box(-np.inf, np.inf, (1,), np.float32),
                             "yaw": spaces.Box(-np.pi, np.pi, (1,), np.float32)})
 
-    def step(self, x: float, z: float, yaw: float = 0,
+    def step(self, x: float, y: float, yaw: float = 0,
              *args: Any, **kwargs: Any) -> Observations:
         src = self._sim.get_agent_state().position
-        target_pos = [x, src[1], z]
+        target_pos = [y, src[1], -x]
         target_rot = [0, np.sin(0.5 * yaw), 0, np.cos(0.5 * yaw)]
         if self._config.MAX_DISTANCE_LIMIT > 0:
             shortest_path = self._sim.intf_node.get_shortest_path(src, target_pos)
