@@ -177,7 +177,7 @@ class HabitatInterfaceROSNode:
             resolution = self.map_resolution
             shape = self.map_grid.shape
         high = np.array([origin.x, origin.y, origin.z])
-        low = high - resolution * np.array([shape[0], 0.0, shape[1]])
+        low = high - resolution * np.array([shape[1], 0.0, shape[0]])
         return low, high
 
     def on_point(self, pt_msg):
