@@ -1,10 +1,14 @@
-from typing import Tuple, List, Set, Optional
+from typing import List, Set, Optional, Union
 
 import magnum as mn
 from habitat_sim.physics import MotionType
 
 from habitat.core.registry import registry
 from habitat.config.default import Config
+
+import rospy
+from geometry_msgs.msg import Point
+from habitat_sim_ros.srv import GeodesicDistance
 
 from .rosrobot_sim import ROSRobot
 from .ros_mngr import ROSManager
@@ -37,8 +41,8 @@ class DummyROSSceneNode:
 class DummyROSObject:
     ros_mngr: ROSManager
     tmpl_id: str
-    pos = Tuple[float, float, float]
-    rot = Tuple[float, float, float, float]
+    pos = List[float]
+    rot = List[float]
 
     def __init__(self, ros_mngr: ROSManager, tmpl_id: str) -> None:
         self.ros_mngr = ros_mngr
@@ -60,7 +64,7 @@ class DummyROSObject:
 
     @translation.setter
     def translation(self, vec: mn.Vector3) -> None:
-        self.pos = (vec.x, vec.y, vec.z)
+        self.pos = [vec.x, vec.y, vec.z]
 
     @property
     def rotation(self) -> mn.Quaternion:
@@ -68,7 +72,7 @@ class DummyROSObject:
 
     @rotation.setter
     def rotation(self, q: mn.Quaternion) -> None:
-        self.rot = (q.vector.x, q.vector.y, q.vector.z, q.scalar)
+        self.rot = [q.vector.x, q.vector.y, q.vector.z, q.scalar]
 
     @property
     def motion_type(self) -> MotionType:
@@ -100,10 +104,14 @@ class DummyROSObjectManager:
 @registry.register_simulator(name="ROS-HabitatSim-v0")
 class ROSHabitatSim(ROSRobot):
     ros_mngr: ROSManager
+    geo_dist_proxy: rospy.ServiceProxy
 
     def __init__(self, config: Config) -> None:
-        self.ros_mngr = ROSManager()
-        self.ros_mngr.start(config)
+        self.ros_mngr = ROSManager(config)
+        self.ros_mngr.start()
+        self.geo_dist_proxy = rospy.ServiceProxy(
+            "/habitat_sim/geodesic_distance", GeodesicDistance
+        )
         super().__init__(config)
 
     def reset(self) -> None:
@@ -126,3 +134,20 @@ class ROSHabitatSim(ROSRobot):
 
     def get_object_template_manager(self) -> DummyROSTemplateManager:
         return DummyROSTemplateManager(self.ros_mngr)
+
+    def geodesic_distance(self,
+        src: List[float],
+        destinations: Union[List[float], List[List[float]]],
+        episode=None
+    ) -> float:
+        try:
+            iter(destinations[0])
+        except TypeError:
+            destinations = [destinations]
+        if not self.has_published_goal:
+            self.intf_node.publish_episode_goal(destinations[0])
+            self.has_published_goal = True
+        return min(self.geo_dist_proxy(
+            Point(-src[2], -src[0], src[1]),
+            Point(-dst[2], -dst[0], dst[1])
+        ).distance for dst in destinations)

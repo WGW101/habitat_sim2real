@@ -1,4 +1,4 @@
-from typing import Tuple, List, Optional
+from typing import List, Optional
 import threading
 
 import rospy
@@ -13,115 +13,147 @@ from habitat.tasks.nav.spawned_objectnav import SpawnedObjectGoal
 
 
 class ROSManager:
-    uuid: str
-    launcher: roslaunch.parent.ROSLaunchParent
-    sim_node: roslaunch.core.Node
-    sim_proc: Optional[roslaunch.pmon.Process] = None
-    sim_load_scene: rospy.ServiceProxy
-    sim_respawn_agent: rospy.ServiceProxy
-    sim_spawn_object: rospy.ServiceProxy
-    sim_clear_objects: rospy.ServiceProxy
-    slam_node: roslaunch.core.Node
-    slam_proc: Optional[roslaunch.pmon.Process] = None
-    slam_restarted_event: threading.Event
-    nav_node: roslaunch.core.Node
-    nav_proc: Optional[roslaunch.pmon.Process] = None
-    nav_clear: rospy.ServiceProxy
+    _sim_cfg: Config
+    _uuid: str
+    _launcher: roslaunch.parent.ROSLaunchParent
+    _set_logger_level: rospy.ServiceProxy
+    _sim_node: roslaunch.core.Node
+    _sim_proc: Optional[roslaunch.pmon.Process] = None
+    _sim_load_scene: rospy.ServiceProxy
+    _sim_respawn_agent: rospy.ServiceProxy
+    _sim_spawn_object: rospy.ServiceProxy
+    _sim_clear_objects: rospy.ServiceProxy
+    _slam_node: roslaunch.core.Node
+    _slam_proc: Optional[roslaunch.pmon.Process] = None
+    _slam_restarted_event: threading.Event
+    _nav_node: roslaunch.core.Node
+    _nav_proc: Optional[roslaunch.pmon.Process] = None
+    _nav_clear: rospy.ServiceProxy
 
-    def __init__(self) -> None:
-        self.uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
-        self.launcher = roslaunch.parent.ROSLaunchParent(
-            self.uuid, [], master_logger_level="ERROR", show_summary=False
+    def __init__(self, sim_cfg: Config) -> None:
+        self._sim_cfg = sim_cfg.clone()
+        self._uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
+        self._launcher = roslaunch.parent.ROSLaunchParent(
+            self._uuid, [], master_logger_level="ERROR", show_summary=False
         )
 
-        self.sim_node = roslaunch.core.Node(
+        self._sim_node = roslaunch.core.Node(
             "habitat_sim_ros", "habitat_sim_node.py", "habitat_sim",
-            output="screen"
+            output="screen",
+            remap_args=[
+                ("/habitat_sim/scan", sim_cfg.ROS.SCAN_TOPIC),
+                ("/habitat_sim/map", sim_cfg.ROS.MAP_TOPIC),
+                ("/habitat_sim/camera/color/image_raw", sim_cfg.ROS.COLOR_IMAGE_TOPIC),
+                ("/habitat_sim/camera/depth/image_raw", sim_cfg.ROS.DEPTH_IMAGE_TOPIC),
+            ]
         )
-        self.sim_load_scene = rospy.ServiceProxy("/habitat_sim/load_scene", LoadScene)
-        self.sim_respawn_agent = rospy.ServiceProxy("/habitat_sim/respawn_agent", RespawnAgent)
-        self.sim_spawn_object = rospy.ServiceProxy("/habitat_sim/spawn_object", SpawnObject)
-        self.sim_clear_objects = rospy.ServiceProxy("/habitat_sim/clear_objects", Empty)
+        self._sim_load_scene = rospy.ServiceProxy("/habitat_sim/load_scene", LoadScene)
+        self._sim_respawn_agent = rospy.ServiceProxy(
+            "/habitat_sim/respawn_agent", RespawnAgent
+        )
+        self._sim_spawn_object = rospy.ServiceProxy("/habitat_sim/spawn_object", SpawnObject)
+        self._sim_clear_objects = rospy.ServiceProxy("/habitat_sim/clear_objects", Empty)
 
-        self.slam_node = roslaunch.core.Node(
+        self._slam_node = roslaunch.core.Node(
             "slam_toolbox", "async_slam_toolbox_node", "slam_toolbox",
-            remap_args=[("/scan", "/habitat_sim/scan")]
+            remap_args=[
+                ("/scan", sim_cfg.ROS.SCAN_TOPIC),
+                ("/map", sim_cfg.ROS.MAP_TOPIC),
+            ]
         )
-        self.slam_restarted_event = threading.Event()
-        rospy.Subscriber("/map", OccupancyGrid, self.on_map)
+        self._slam_restarted_event = threading.Event()
+        rospy.Subscriber(sim_cfg.ROS.MAP_TOPIC, OccupancyGrid, self._on_map)
 
-        self.nav_node = roslaunch.core.Node(
+        self._nav_node = roslaunch.core.Node(
             "move_base", "move_base", "move_base",
             remap_args=[
-                ("/scan", "/habitat_sim/scan"),
+                ("/scan", sim_cfg.ROS.SCAN_TOPIC),
                 ("/cmd_vel", "/habitat_sim/cmd_vel")
             ]
         )
-        self.nav_clear = rospy.ServiceProxy("/move_base/clear_costmaps", Empty)
+        self._nav_clear = rospy.ServiceProxy("/move_base/clear_costmaps", Empty)
 
-    def set_params(self, sim_cfg: Config) -> None:
-        for param_name in (
-            "/slam_toolbox/base_frame",
-            "/move_base/global_costmap/robot_base_frame",
-            "/move_base/local_costmap/robot_base_frame"
-        ):
-            rospy.set_param(param_name, sim_cfg.ROS.TF_ROBOT_FRAME)
-        rospy.set_param("/habitat_sim/sim/scene_id", sim_cfg.SCENE)
+    def _set_params(self) -> None:
+        self._set_sim_params(self._sim_cfg)
+        self._set_movebase_params()
 
-    def start(self, sim_cfg: Config) -> None:
-        self.launcher.start()
-        self.set_params(sim_cfg)
+    def _set_sim_params(self, sim_cfg: Config, ns: str = "/habitat_sim") -> None:
+        #rospy.set_param("/use_sim_time", True)
+        rospy.set_param(f"{ns}/sim/allow_sliding", sim_cfg.HABITAT_SIM_V0.ALLOW_SLIDING)
+        rospy.set_param(f"{ns}/sim/scene_id", sim_cfg.SCENE)
+        self._set_agent_params(sim_cfg.AGENT_0, f"{ns}/agent")
+        self._set_sensor_params(sim_cfg.RGB_SENSOR, f"{ns}/color")
+        self._set_sensor_params(sim_cfg.DEPTH_SENSOR, f"{ns}/depth")
 
-        self.sim_proc, success = self.launcher.runner.launch_node(self.sim_node)
+    def _set_agent_params(self, ag_cfg: Config, ns: str = "/habitat_sim/agent") -> None:
+        rospy.set_param(f"{ns}/height", ag_cfg.HEIGHT)
+        rospy.set_param(f"{ns}/radius", ag_cfg.RADIUS)
+
+    def _set_sensor_params(self, sensor_cfg: Config, ns: str = "/habitat_sim/color") -> None:
+        rospy.set_param(f"{ns}/position/x", -sensor_cfg.POSITION[2])
+        rospy.set_param(f"{ns}/position/y", -sensor_cfg.POSITION[0])
+        rospy.set_param(f"{ns}/position/z", sensor_cfg.POSITION[1])
+        rospy.set_param(f"{ns}/orientation/tilt", -sensor_cfg.ORIENTATION[0])
+        rospy.set_param(f"{ns}/height", sensor_cfg.HEIGHT)
+        rospy.set_param(f"{ns}/width", sensor_cfg.WIDTH)
+        rospy.set_param(f"{ns}/hfov", sensor_cfg.HFOV)
+
+    def _set_movebase_params(self, ns: str = "/move_base") -> None:
+        rospy.set_param(f"{ns}/recovery_behavior_enabled", False)
+        rospy.set_param(f"{ns}/clearing_rotation_allowed", False)
+        rospy.set_param(f"{ns}/NavfnROS/allow_unknown", True)
+        self._set_global_costmap_params(f"{ns}/global_costmap")
+        self._set_local_costmap_params(f"{ns}/local_costmap")
+
+    def _set_global_costmap_params(self, ns: str = "/move_base/global_costmap") -> None:
+        rospy.set_param(f"{ns}/robot_base_frame", "base_footprint")
+        rospy.set_param(f"{ns}/robot_base_frame", "base_footprint")
+        rospy.set_param(f"{ns}/static_map", True)
+        rospy.set_param(f"{ns}/update_frequency", 1.0)
+        rospy.set_param(f"{ns}/robot_radius", 0.18)
+        rospy.set_param(f"{ns}/inflation_radius", 0.5)
+
+    def _set_local_costmap_params(self, ns: str = "/move_base/local_costmap") -> None:
+        rospy.set_param(f"{ns}/robot_base_frame", "base_footprint")
+        rospy.set_param(f"{ns}/static_map", False)
+        rospy.set_param(f"{ns}/rolling_window" , True)
+        rospy.set_param(f"{ns}/width", 3.0)
+        rospy.set_param(f"{ns}/height", 3.0)
+
+    def start(self) -> None:
+        self._launcher.start()
+        self._set_params()
+
+        self._sim_proc, success = self._launcher.runner.launch_node(self._sim_node)
         if not success:
             raise RuntimeError("Failed to launch habitat_sim_ros")
 
-        self.slam_proc, success = self.launcher.runner.launch_node(self.slam_node)
+        self._slam_proc, success = self._launcher.runner.launch_node(self._slam_node)
         if not success:
             raise RuntimeError("Failed to launch slam_toolbox")
 
-        self.nav_proc, success = self.launcher.runner.launch_node(self.nav_node)
+        self._nav_proc, success = self._launcher.runner.launch_node(self._nav_node)
         if not success:
             raise RuntimeError("Failed to launch move_base")
 
     def stop(self) -> None:
-        self.launcher.shutdown()
+        self._launcher.shutdown()
 
-    def on_map(self, map_msg) -> None:
-        self.slam_restarted_event.set()
+    def _on_map(self, map_msg) -> None:
+        self._slam_restarted_event.set()
 
     def stop_slam(self) -> None:
-        self.slam_proc.stop()
+        self._slam_proc.stop()
 
     def restart_slam(self) -> None:
-        self.slam_restarted_event.clear()
-        self.slam_proc, success = self.launcher.runner.launch_node(self.slam_node)
-        if not success or not self.slam_restarted_event.wait(timeout=30.0):
+        self._slam_restarted_event.clear()
+        self._slam_proc, success = self._launcher.runner.launch_node(self._slam_node)
+        if not success or not self._slam_restarted_event.wait(timeout=30.0):
             raise RuntimeError("Failed to restart slam_toolbox")
-        self.nav_clear()
+        self._nav_clear()
 
     @staticmethod
     def _make_pose(position: List[float], rotation: List[float]) -> Pose:
-        p = Pose()
-        p.position.x = -position[2]
-        p.position.y = -position[0]
-        p.position.z = position[1]
-        p.orientation.z = rotation[1]
-        p.orientation.w = rotation[3]
-        return p
-
-    def reconfigure_sim(self, sim_cfg: Config) -> None:
-        self.sim_load_scene(sim_cfg.SCENE)
-        if sim_cfg.AGENT_0.IS_SET_START_STATE:
-            self.sim_respawn_agent(ROSManager._make_pose(
-                sim_cfg.AGENT_0.START_POSITION, sim_cfg.AGENT_0.START_ROTATION
-            ))
-
-    def spawn_object(self,
-        tmpl_id: str,
-        position: Tuple[float, float, float],
-        rotation: Tuple[float, float, float, float],
-    ) -> None:
         p = Pose()
         p.position.x = -position[2]
         p.position.y = -position[0]
@@ -130,7 +162,23 @@ class ROSManager:
         p.orientation.y = -rotation[0]
         p.orientation.z = rotation[1]
         p.orientation.w = rotation[3]
-        self.sim_spawn_object(tmpl_id, p)
+        return p
+
+    def reconfigure_sim(self, sim_cfg: Config) -> None:
+        if self._sim_cfg.SCENE != sim_cfg.SCENE:
+            self._sim_load_scene(sim_cfg.SCENE)
+        if sim_cfg.AGENT_0.IS_SET_START_STATE:
+            self._sim_respawn_agent(ROSManager._make_pose(
+                sim_cfg.AGENT_0.START_POSITION, sim_cfg.AGENT_0.START_ROTATION
+            ))
+        self._sim_cfg = sim_cfg.clone()
+
+    def spawn_object(self,
+        tmpl_id: str,
+        position: List[float],
+        rotation: List[float],
+    ) -> None:
+        self._sim_spawn_object(tmpl_id, ROSManager._make_pose(position, rotation))
 
     def clear_objects(self):
-        self.sim_clear_objects()
+        self._sim_clear_objects()
