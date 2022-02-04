@@ -23,14 +23,21 @@ class SlaveProcess(mp.Process):
         return (*s.position.tolist(), s.rotation.w, s.rotation.x, s.rotation.y, s.rotation.z)
 
     @staticmethod
-    def tuple_to_pos_rot(tup: Tuple[float]) -> Tuple[np.array, np.quaternion]:
-        return np.array(tup[:3]), np.quaternion(*tup[3:])
+    def tuple_to_state(tup: Tuple[float]) -> AgentState:
+        return AgentState(np.array(tup[:3]), np.quaternion(*tup[3:]))
 
     @staticmethod
     def array_to_shared(src: np.ndarray, dest: mp.Array, typ: str) -> None:
         wrap = np.frombuffer(dest.get_obj(), dtype=typ)
         with dest:
             wrap[:] = src.flatten()
+
+    @staticmethod
+    def shared_to_array(src: mp.Array, typ: str) -> np.ndarray:
+        wrap = np.frombuffer(src.get_obj(), dtype=typ)
+        with src:
+            cp = wrap.copy()
+        return cp
 
     class Messages(enum.Enum):
         READY = enum.auto()
@@ -90,8 +97,8 @@ class SlaveProcess(mp.Process):
                     self._conn.send((SlaveProcess.Messages.RETURN_COLLIDED,
                                      sim.previous_step_collided))
                 elif msg == SlaveProcess.Messages.GET_OBS_AT:
-                    pos, rot = SlaveProcess.tuple_to_pos_rot(arg)
-                    obs = sim.get_observations_at(pos, rot, True)
+                    s = SlaveProcess.tuple_to_state(arg)
+                    obs = sim.get_observations_at(s.position, s.rotation, True)
                     SlaveProcess.array_to_shared(obs['rgb'], self.shared_rgb, 'B')
                     SlaveProcess.array_to_shared(obs['depth'], self.shared_depth, 'f')
                     self._conn.send((SlaveProcess.Messages.RETURN_OBS, None))
@@ -102,17 +109,12 @@ class SlaveProcess(mp.Process):
                     break
 
     def get_shared_obs(self) -> Dict[str, np.ndarray]:
-        wrap = np.frombuffer(self.shared_rgb.get_obj(), dtype='B')
-        with self.shared_rgb:
-            cp_rgb = wrap.copy()
-        wrap = np.frombuffer(self.shared_depth.get_obj(), dtype='f')
-        with self.shared_depth:
-            cp_depth = wrap.copy()
-        return {"rgb": cp_rgb, "depth": cp_depth}
+        return {"rgb": SlaveProcess.shared_to_array(self.shared_rgb, 'B'),
+                "depth": SlaveProcess.shared_to_array(self.shared_depth, 'f')}
 
 
 def make_sidechain(master_cls, *, slave_type: Optional[str]=None,
-                                 slave_config: Optional[Config]=None):
+                                  slave_config: Optional[Config]=None):
     if slave_config is None:
         if slave_type is None:
             raise ValueError("Please provide either slave_type or slave_config kwarg")
