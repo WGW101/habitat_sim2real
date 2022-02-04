@@ -66,16 +66,7 @@ class EgoMapSensor(Sensor):
 
         h, w = topdown_map.shape
         rot = cv2.getRotationMatrix2D((j, i), -np.degrees(a), 1.0)
-        rot_h = int(h * abs(rot[0, 0]) + w * abs(rot[0, 1]))
-        rot_w = int(h * abs(rot[0, 1]) + w * abs(rot[0, 0]))
-        rot[0, 2] += 0.5 * rot_w - j
-        rot[1, 2] += 0.5 * rot_h - i
-        rot_map = cv2.warpAffine(topdown_map, rot, (rot_w, rot_h),
-                                 borderValue=maps.MAP_INVALID_POINT)
         res = int(2 * d / mppx)
-        ego_map = np.zeros((res, res), dtype=np.uint8)
-        oi, oj = max(0, (res - rot_h) // 2), max(0, (res - rot_w) // 2)
-        y, x = max(0, (rot_h - res) // 2), max(0, (rot_w - res) // 2)
-        ego_map[oi:oi + rot_h, oj: oj + rot_w] = rot_map[y:y + res, x: x + res]
-        return ego_map
-
+        rot[0, 2] += 0.5 * res - j
+        rot[1, 2] += 0.5 * res - i
+        return cv2.warpAffine(topdown_map, rot, (res, res), borderValue=maps.MAP_INVALID_POINT)
