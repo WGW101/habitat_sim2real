@@ -149,9 +149,9 @@ class HabitatInterfaceROSNode:
         transform.transform.rotation.z = origin.pose.orientation.z
         transform.transform.rotation.w = origin.pose.orientation.w
 
-        grid = np.array(occ_grid_msg.data).reshape(occ_grid_msg.info.height,
-                                                   occ_grid_msg.info.width)
-        grid = grid[::-1, ::-1].T
+        grid = np.array(occ_grid_msg.data).reshape(
+            occ_grid_msg.info.height, occ_grid_msg.info.width
+        )
         free_points = np.stack(np.nonzero(
             (grid < self.cfg.MAP_FREE_THRESH) & (grid > -1)
         ), -1)
@@ -163,22 +163,11 @@ class HabitatInterfaceROSNode:
             self.map_free_points = free_points
         self.has_first_map.set()
 
-    def get_map_grid(self):
+    def get_map_data(self):
         if not self.has_first_map.wait(self.cfg.GETTER_TIMEOUT):
             raise RuntimeError("Timed out waiting for map.")
         with self.map_lock:
-            return self.map_grid
-
-    def get_map_bounds(self):
-        if not self.has_first_map.wait(self.cfg.GETTER_TIMEOUT):
-            raise RuntimeError("Timed out waiting for map.")
-        with self.map_lock:
-            origin = self.map_origin_transform.transform.translation
-            resolution = self.map_resolution
-            shape = self.map_grid.shape
-        high = np.array([origin.x, origin.y, origin.z])
-        low = high - resolution * np.array([shape[1], 0.0, shape[0]])
-        return low, high
+            return self.map_grid, self.map_origin_transform.transform, self.map_resolution
 
     def on_point(self, pt_msg):
         try:
@@ -208,8 +197,8 @@ class HabitatInterfaceROSNode:
             with self.map_lock:
                 pt = self.rng.choice(self.map_free_points) * self.map_resolution
                 pose = PoseStamped()
-                pose.pose.position.x = pt[0]
-                pose.pose.position.y = pt[1]
+                pose.pose.position.x = pt[1]
+                pose.pose.position.y = pt[0]
                 pose.pose.orientation.w = 1
                 pose = tf2_geometry_msgs.do_transform_pose(pose, self.map_origin_transform)
             return [pose.pose.position.x, pose.pose.position.y, pose.pose.position.z]

@@ -1,4 +1,5 @@
 from typing import List, Optional
+import math
 import threading
 
 import rospy
@@ -81,11 +82,21 @@ class ROSManager:
         #rospy.set_param("/use_sim_time", True)
         rospy.set_param(f"{ns}/sim/allow_sliding", sim_cfg.HABITAT_SIM_V0.ALLOW_SLIDING)
         rospy.set_param(f"{ns}/sim/scene_id", sim_cfg.SCENE)
+        rospy.set_param(f"{ns}/sim/seed", sim_cfg.SEED)
         self._set_agent_params(sim_cfg.AGENT_0, f"{ns}/agent")
         self._set_sensor_params(sim_cfg.RGB_SENSOR, f"{ns}/color")
         self._set_sensor_params(sim_cfg.DEPTH_SENSOR, f"{ns}/depth")
 
     def _set_agent_params(self, ag_cfg: Config, ns: str = "/habitat_sim/agent") -> None:
+        rospy.set_param(f"{ns}/start_position/random", not ag_cfg.IS_SET_START_STATE)
+        rospy.set_param(f"{ns}/start_position/x", -ag_cfg.START_POSITION[2])
+        rospy.set_param(f"{ns}/start_position/y", -ag_cfg.START_POSITION[0])
+        rospy.set_param(f"{ns}/start_position/z", ag_cfg.START_POSITION[1])
+        rospy.set_param(f"{ns}/start_orientation/random", not ag_cfg.IS_SET_START_STATE)
+        yaw = math.degrees(
+            2 * math.atan(ag_cfg.START_ROTATION[1] / ag_cfg.START_ROTATION[3])
+        ) if ag_cfg.START_ROTATION[3] != 0 else 180
+        rospy.set_param(f"{ns}/start_orientation/yaw", yaw)
         rospy.set_param(f"{ns}/height", ag_cfg.HEIGHT)
         rospy.set_param(f"{ns}/radius", ag_cfg.RADIUS)
 

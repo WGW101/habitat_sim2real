@@ -8,7 +8,8 @@ from habitat.core.simulator import (
     Simulator, RGBSensor, DepthSensor, SensorSuite, Sensor, SensorTypes
 )
 from habitat.utils.visualizations.maps import (
-    MAP_INVALID_POINT, MAP_VALID_POINT, MAP_BORDER_INDICATOR
+    MAP_INVALID_POINT, MAP_VALID_POINT, MAP_BORDER_INDICATOR,
+    colorize_topdown_map
 )
 from gym import spaces
 
@@ -86,16 +87,39 @@ class DummyROSAgent:
 class DummyROSPathfinder:
     def __init__(self, intf_node):
         self._intf_node = intf_node
+        self._axis_aligned_bounds = None
 
     def get_bounds(self):
-        return self._intf_node.get_map_bounds()
+        assert self._axis_aligned_bounds is not None
+        return self._axis_aligned_bounds
 
     def get_topdown_view(self, *args, **kwargs):
         thresh = self._intf_node.cfg.MAP_FREE_THRESH
-        grid = self._intf_node.get_map_grid()
+        grid, tf, mppx = self._intf_node.get_map_data()
         topdown = np.full(grid.shape, MAP_INVALID_POINT, dtype=np.uint8)
         topdown[(grid >= 0) & (grid < thresh)] = MAP_VALID_POINT
         topdown[grid >= thresh] = MAP_BORDER_INDICATOR
+
+
+        size = np.array([grid.shape[1], grid.shape[0]])
+        pos = np.array([tf.translation.x, tf.translation.y, tf.translation.z])
+        rot = np.quaternion(tf.rotation.w, tf.rotation.x, tf.rotation.y, tf.rotation.z)
+        center = (rot * np.quaternion(0, *(0.5 * mppx * size), 0) * rot.conj()).vec + pos
+
+        rot2d = quat.as_rotation_matrix(rot)[::2]
+        aa_size = (abs(rot2d[:, :2]) @ size).astype(np.int64)
+        rot2d[:, 2] = 0.5 * (aa_size - rot2d[:, :2] @ size)
+
+        topdown = cv2.warpAffine(topdown, rot2d, tuple(aa_size), borderValue=MAP_INVALID_POINT)
+    
+        lower = center.copy()
+        lower[::2] -= 0.5 * mppx * aa_size
+        lower[1] -= 1.0
+        upper = center.copy()
+        upper[::2] += 0.5 * mppx * aa_size
+        upper[1] += 2.0
+        self._axis_aligned_bounds = lower, upper
+
         return topdown
 
 
