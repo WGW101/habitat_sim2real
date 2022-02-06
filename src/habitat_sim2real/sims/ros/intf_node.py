@@ -35,8 +35,12 @@ class HabitatInterfaceROSNode:
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         self.tf_timeout = rospy.Duration(self.cfg.TF_TIMEOUT)
 
-        self.last_p = (0, 0, 0)
-        self.last_q = (0, 0, 0, 1)
+        self.last_p = (0.0, 0.0, 0.0)
+        self.last_q = (0.0, 0.0, 0.0, 1.0)
+        self.travelled_distance = 0.0
+        self.robot_pose_lock = threading.Lock()
+        self.robot_pose_watcher = threading.Thread(target=self.watch_robot_pose)
+        self.robot_pose_watcher.start()
 
         self.color_sub = message_filters.Subscriber(cfg.COLOR_IMAGE_TOPIC, Image)
         self.depth_sub = message_filters.Subscriber(cfg.DEPTH_IMAGE_TOPIC, Image)
@@ -99,7 +103,7 @@ class HabitatInterfaceROSNode:
         self.point_lock = threading.Lock()
         self.last_point = None
         self.has_new_point = threading.Event()
-        self.pt_sub = rospy.Subscriber("/clicked_point", PointStamped, self.on_point)
+        self.pt_sub = rospy.Subscriber(cfg.RVIZ_POINT_TOPIC, PointStamped, self.on_point)
 
     def on_img(self, color_img_msg, depth_img_msg):
         try:
@@ -217,23 +221,33 @@ class HabitatInterfaceROSNode:
         with self.collided_lock:
             self.collided = False
 
+    def watch_robot_pose(self):
+        rate = rospy.Rate(20)
+        while not rospy.is_shutdown():
+            try:
+                tf = self.tf_buffer.lookup_transform(self.cfg.TF_HABITAT_REF_FRAME,
+                                                     self.cfg.TF_HABITAT_ROBOT_FRAME,
+                                                     rospy.Time(0), self.tf_timeout).transform
+                p = (tf.translation.x, tf.translation.y, tf.translation.z)
+                q = (tf.rotation.x, tf.rotation.y, tf.rotation.z, tf.rotation.w)
+                with self.robot_pose_lock:
+                    delta = np.sqrt(sum((x - lx)**2 for x, lx in zip(p, self.last_p)))
+                    self.travelled_distance += delta
+                    self.last_p, self.last_q = p, q
+            except (tf2_ros.LookupException,
+                    tf2_ros.ConnectivityException,
+                    tf2_ros.ExtrapolationException) as e:
+                logging.warn(e)
+            rate.sleep()
+
+    def get_travel_distance_delta(self):
+        with self.robot_pose_lock:
+            d, self.travelled_distance = self.travelled_distance, 0.0
+        return d
+
     def get_robot_pose(self):
-        try:
-            trans = self.tf_buffer.lookup_transform(self.cfg.TF_HABITAT_REF_FRAME,
-                                                    self.cfg.TF_HABITAT_ROBOT_FRAME,
-                                                    rospy.Time(0), self.tf_timeout)
-        except (tf2_ros.LookupException,
-                tf2_ros.ConnectivityException,
-                tf2_ros.ExtrapolationException) as e:
-            logging.warn(e)
+        with self.robot_pose_lock:
             return self.last_p, self.last_q
-        p = (trans.transform.translation.x,
-             trans.transform.translation.y,
-             trans.transform.translation.z)
-        q = (trans.transform.rotation.x, trans.transform.rotation.y,
-             trans.transform.rotation.z, trans.transform.rotation.w)
-        self.last_p, self.last_q = p, q
-        return p, q
 
     def _make_pose_stamped(self, pos, rot=None):
         if rot is None:
