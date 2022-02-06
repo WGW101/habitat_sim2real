@@ -8,6 +8,7 @@ from .tasks.nav.noisy_loc_sensors import (NoisyEpisodicCompassSensor,
 from .tasks.nav.ego_map import EgoMapSensor
 from .tasks.real.motion_error_measure import MotionErrorsMeasure
 from .tasks.nav.goto_action import GotoAction
+from .tasks.nav.online_measures import OnlineSequentialSPL, OnlinePPL
 
 
 try:
