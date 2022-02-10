@@ -8,3 +8,4 @@ data*
 TEMP*
 out*
 *.log
+.vscode/settings.json
