@@ -284,7 +284,7 @@ class HabitatInterfaceROSNode:
     def get_distance(self, src, dst):
         plan = self._get_raw_plan(src, dst)
         if plan:
-            poses = np.array([[(p := pose.pose.position).x, p.y, p.z] for pose in plan])
+            poses = np.array([[pose.pose.position.x, pose.pose.position.y, pose.pose.position.z] for pose in plan])
             return np.sqrt(((poses[1:] - poses[:-1])**2).sum(axis=1)).sum()
         else:
             return np.inf
