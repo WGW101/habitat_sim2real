@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
 import pickle
 import numpy as np
-from habitat.tasks.sequential_nav.sequential_nav import SequentialEpisode, SequentialSPL, SequentialNavigationTask, PPL
+from habitat.tasks.sequential_nav.sequential_nav import SequentialEpisode, SequentialSPL, SequentialNavigationTask, PPL, SequentialSuccess, Progress
 from habitat.core.registry import registry
 
 CACHED_DATA_ROOT = "data/cached_measurements/"

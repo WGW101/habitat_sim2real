@@ -185,11 +185,11 @@ class ROSRobot(Simulator):
         elif action == 4: # LOOK_UP
             self.cur_camera_tilt -= self.habitat_config.TILT_ANGLE
             self.cur_camera_tilt = max(-45, min(self.cur_camera_tilt, 45))
-            self.intf_node.set_camera_tilt(np.radians(self.cur_camera_tilt))
+            # self.intf_node.set_camera_tilt(np.radians(self.cur_camera_tilt))
         elif action == 5: # LOOK_DOWN
             self.cur_camera_tilt += self.habitat_config.TILT_ANGLE
             self.cur_camera_tilt = max(-45, min(self.cur_camera_tilt, 45))
-            self.intf_node.set_camera_tilt(np.radians(self.cur_camera_tilt))
+            # self.intf_node.set_camera_tilt(np.radians(self.cur_camera_tilt))
 
         has_collided = self.intf_node.has_collided()
         if not self.previous_step_collided and has_collided:
@@ -224,8 +224,8 @@ class ROSRobot(Simulator):
         self.intf_node.move_to_absolute(position, rotation)
         self.intf_node.cancel_move_on_bump = True
         self.intf_node.clear_collided()
-        if reset_sensor:
-            self.intf_node.set_camera_tilt(self.habitat_config.RGB_SENSOR.ORIENTATION[0])
+        # if reset_sensor:
+            # self.intf_node.set_camera_tilt(self.habitat_config.RGB_SENSOR.ORIENTATION[0])
 
     def get_agent_state(self, agent_id=0):
         p, q = self.intf_node.get_robot_pose()

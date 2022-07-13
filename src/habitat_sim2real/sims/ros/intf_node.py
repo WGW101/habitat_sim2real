@@ -76,18 +76,18 @@ class HabitatInterfaceROSNode:
         if not self.move_base_client.wait_for_server(timeout):
             raise RuntimeError("Unable to connect to move_base action server.")
 
-        try:
-            rospy.wait_for_service(cfg.DYNAMIXEL_SERVICE, timeout)
-            self.dynamixel_cmd_proxy = rospy.ServiceProxy(cfg.DYNAMIXEL_SERVICE,
-                                                          DynamixelCommand)
-        except rospy.ROSException:
-            self.dynamixel_cmd_proxy = None
+        # try:
+        #     rospy.wait_for_service(cfg.DYNAMIXEL_SERVICE, timeout)
+        #     self.dynamixel_cmd_proxy = rospy.ServiceProxy(cfg.DYNAMIXEL_SERVICE,
+        #                                                   DynamixelCommand)
+        # except rospy.ROSException:
+        #     self.dynamixel_cmd_proxy = None
+        # self.dynamixel_sub = rospy.Subscriber(cfg.DYNAMIXEL_STATE_TOPIC,
+        #                                       DynamixelStateList,
+        #                                       self.on_dynamixel_state)
         self.tilt_target_value = None
         self.tilt_target_event = threading.Event()
         self.tilt_reached_event = threading.Event()
-        self.dynamixel_sub = rospy.Subscriber(cfg.DYNAMIXEL_STATE_TOPIC,
-                                              DynamixelStateList,
-                                              self.on_dynamixel_state)
 
         try:
             rospy.wait_for_service(cfg.MOVE_BASE_PLAN_SERVICE, timeout)
