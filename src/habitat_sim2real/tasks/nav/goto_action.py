@@ -25,7 +25,7 @@ class GotoAction(SimulatorTaskAction):
     def step(self, x: float, y: float, yaw: float = 0,
              *args: Any, **kwargs: Any) -> Observations:
         src = self._sim.get_agent_state().position
-        pos = (self.start_rot * np.quaternion(0, y, src[1], -x) * self.start_rot.conj()).vec 
+        pos = (self.start_rot * np.quaternion(0, y, 0, -x) * self.start_rot.conj()).vec
         pos += self.start_pos
         rot = self.start_rot * np.quaternion(np.cos(0.5 * yaw), 0, np.sin(0.5 * yaw), 0)
         if self._config.MAX_DISTANCE_LIMIT > 0:

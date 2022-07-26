@@ -162,7 +162,9 @@ class ROSRobot(Simulator):
         self.has_published_goal = False
         ag_cfg = getattr(self.habitat_config,
                          self.habitat_config.AGENTS[self.habitat_config.DEFAULT_AGENT_ID])
-        if ag_cfg.IS_SET_START_STATE:
+        if self.habitat_config.ROS.PUBLISH_REF_TF:
+            self.intf_node.set_ref_tf(ag_cfg.START_POSITION, ag_cfg.START_ROTATION)
+        elif ag_cfg.IS_SET_START_STATE:
             pos = np.array(ag_cfg.START_POSITION)
             rot = quat.quaternion(ag_cfg.START_ROTATION[3], *ag_cfg.START_ROTATION[:3])
             state = self.get_agent_state()

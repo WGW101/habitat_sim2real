@@ -33,9 +33,9 @@ class BaseSimulatorViewer:
                                         (upper[2] - lower[2]) / self.map_size[1]])
         self.map_altitude = self.sim.get_agent_state().position[1]
         if draw_origin:
-            o = self.project_pos_to_map([0, 0, 0])
-            ox = self.project_pos_to_map([1, 0, 0])
-            oz = self.project_pos_to_map([0, 0, 1])
+            o = self.project_pos_to_map(np.array([0, 0, 0]))
+            ox = self.project_pos_to_map(np.array([1, 0, 0]))
+            oz = self.project_pos_to_map(np.array([0, 0, 1]))
             cv2.line(self.map_img, tuple(o), tuple(ox), (0, 0, 255), 2)
             cv2.line(self.map_img, tuple(o), tuple(oz), (255, 0, 0), 2)
             cv2.circle(self.map_img, tuple(o), 5, (0, 255, 0), -1)

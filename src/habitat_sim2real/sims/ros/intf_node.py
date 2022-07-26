@@ -1,5 +1,6 @@
 import threading
 import numpy as np
+import quaternion
 import logging
 
 import rospy
@@ -33,7 +34,9 @@ class HabitatInterfaceROSNode:
 
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
+        self.tf_broadcaster = tf2_ros.TransformBroadcaster()
         self.tf_timeout = rospy.Duration(self.cfg.TF_TIMEOUT)
+        self.ref_tf = None
 
         self.last_p = (0.0, 0.0, 0.0)
         self.last_q = (0.0, 0.0, 0.0, 1.0)
@@ -224,6 +227,9 @@ class HabitatInterfaceROSNode:
     def watch_robot_pose(self):
         rate = rospy.Rate(20)
         while not rospy.is_shutdown():
+            if self.ref_tf is not None:
+                self.ref_tf.header.stamp = rospy.Time.now()
+                self.tf_broadcaster.sendTransform([self.ref_tf])
             try:
                 tf = self.tf_buffer.lookup_transform(self.cfg.TF_HABITAT_REF_FRAME,
                                                      self.cfg.TF_HABITAT_ROBOT_FRAME,
@@ -389,3 +395,19 @@ class HabitatInterfaceROSNode:
 
     def seed_rng(self, seed):
         self.rng = np.random.default_rng(seed)
+
+    def set_ref_tf(start_pos, start_rot):
+        rot = (
+            np.quaternion(start_rot[3], *start_rot[:3])
+            * np.quaternion(-0.5, -0.5, 0.5, 0.5)
+        )
+        self.ref_tf = TransformStamped()
+        self.ref_tf.header.frame_id = self.cfg.TF_HABITAT_REF_FRAME
+        self.ref_tf.child_frame_id = self.cfg.TF_REF_FRAME
+        self.ref_tf.transform.translation.x = start_pos[0]
+        self.ref_tf.transform.translation.y = start_pos[1]
+        self.ref_tf.transform.translation.z = start_pos[2]
+        self.ref_tf.transform.rotation.x = rot.x
+        self.ref_tf.transform.rotation.y = rot.y
+        self.ref_tf.transform.rotation.z = rot.z
+        self.ref_tf.transform.rotation.w = rot.w
