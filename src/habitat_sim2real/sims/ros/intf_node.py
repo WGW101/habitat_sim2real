@@ -2,6 +2,7 @@ import threading
 import numpy as np
 import quaternion
 import logging
+import time
 
 import rospy
 import message_filters
@@ -16,8 +17,8 @@ from sensor_msgs.msg import Image, LaserScan
 from nav_msgs.msg import OccupancyGrid
 from nav_msgs.srv import GetPlan
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
-from dynamixel_workbench_msgs.msg import DynamixelStateList
-from dynamixel_workbench_msgs.srv import DynamixelCommand
+#from dynamixel_workbench_msgs.msg import DynamixelStateList
+#from dynamixel_workbench_msgs.srv import DynamixelCommand
 from kobuki_msgs.msg import BumperEvent
 
 
@@ -47,8 +48,10 @@ class HabitatInterfaceROSNode:
 
         self.color_sub = message_filters.Subscriber(cfg.COLOR_IMAGE_TOPIC, Image)
         self.depth_sub = message_filters.Subscriber(cfg.DEPTH_IMAGE_TOPIC, Image)
-        self.img_sync = message_filters.TimeSynchronizer([self.color_sub, self.depth_sub],
-                                                         cfg.IMAGE_SYNC_QUEUE_SIZE)
+        self.img_sync = message_filters.ApproximateTimeSynchronizer(
+            [self.color_sub, self.depth_sub],
+            cfg.IMAGE_SYNC_QUEUE_SIZE, cfg.IMAGE_SYNC_TOL,
+        )
         self.bridge = cv_bridge.CvBridge()
         self.raw_color_buffer = None
         self.raw_depth_buffer = None
@@ -79,18 +82,18 @@ class HabitatInterfaceROSNode:
         if not self.move_base_client.wait_for_server(timeout):
             raise RuntimeError("Unable to connect to move_base action server.")
 
-        try:
-            rospy.wait_for_service(cfg.DYNAMIXEL_SERVICE, timeout)
-            self.dynamixel_cmd_proxy = rospy.ServiceProxy(cfg.DYNAMIXEL_SERVICE,
-                                                          DynamixelCommand)
-        except rospy.ROSException:
-            self.dynamixel_cmd_proxy = None
-        self.tilt_target_value = None
-        self.tilt_target_event = threading.Event()
-        self.tilt_reached_event = threading.Event()
-        self.dynamixel_sub = rospy.Subscriber(cfg.DYNAMIXEL_STATE_TOPIC,
-                                              DynamixelStateList,
-                                              self.on_dynamixel_state)
+#        try:
+#            rospy.wait_for_service(cfg.DYNAMIXEL_SERVICE, timeout)
+#            self.dynamixel_cmd_proxy = rospy.ServiceProxy(cfg.DYNAMIXEL_SERVICE,
+#                                                          DynamixelCommand)
+#        except rospy.ROSException:
+#            self.dynamixel_cmd_proxy = None
+#        self.tilt_target_value = None
+#        self.tilt_target_event = threading.Event()
+#        self.tilt_reached_event = threading.Event()
+#        self.dynamixel_sub = rospy.Subscriber(cfg.DYNAMIXEL_STATE_TOPIC,
+#                                              DynamixelStateList,
+#                                              self.on_dynamixel_state)
 
         try:
             rospy.wait_for_service(cfg.MOVE_BASE_PLAN_SERVICE, timeout)
@@ -113,7 +116,7 @@ class HabitatInterfaceROSNode:
             raw_color = self.bridge.imgmsg_to_cv2(color_img_msg, "passthrough")
             raw_depth = self.bridge.imgmsg_to_cv2(depth_img_msg, "passthrough")
         except cv_bridge.CvBridgeError as e:
-            logging.warn(e)
+            logging.warning(e)
             return
         with self.img_buffer_lock:
             self.raw_color_buffer = raw_color
@@ -135,16 +138,19 @@ class HabitatInterfaceROSNode:
                 return (self.raw_color_buffer, self.raw_depth_buffer, self.raw_scan_buffer)
 
     def on_map(self, occ_grid_msg):
-        try:
-            origin = PoseStamped(header=occ_grid_msg.header, pose=occ_grid_msg.info.origin)
-            origin = self.tf_buffer.transform(origin,
-                                              self.cfg.TF_HABITAT_REF_FRAME,
-                                              self.tf_timeout)
-        except (tf2_ros.LookupException,
-                tf2_ros.ConnectivityException,
-                tf2_ros.ExtrapolationException) as e:
-            logging.warn(e)
-            return
+#        try:
+#            origin = PoseStamped(header=occ_grid_msg.header, pose=occ_grid_msg.info.origin)
+#            origin = self.tf_buffer.transform(origin,
+#                                              self.cfg.TF_HABITAT_REF_FRAME,
+#                                              self.tf_timeout)
+#        except (tf2_ros.LookupException,
+#                tf2_ros.ConnectivityException,
+#                tf2_ros.ExtrapolationException) as e:
+#            logging.warning(e)
+#            return
+        while self.ref_tf is None and not rospy.is_shutdown():
+            time.sleep(1.0)
+        origin = tf2_geometry_msgs.do_transform_pose(PoseStamped(pose=occ_grid_msg.info.origin), self.ref_tf)
         transform = TransformStamped()
         transform.header.frame_id = self.cfg.TF_HABITAT_REF_FRAME
         transform.child_frame_id = "map_origin"
@@ -183,7 +189,7 @@ class HabitatInterfaceROSNode:
         except (tf2_ros.LookupException,
                 tf2_ros.ConnectivityException,
                 tf2_ros.ExtrapolationException) as e:
-            logging.warn(e)
+            logging.warning(e)
             return
         with self.point_lock:
             self.last_point = [pt.point.x, pt.point.y, pt.point.z]
@@ -243,7 +249,7 @@ class HabitatInterfaceROSNode:
             except (tf2_ros.LookupException,
                     tf2_ros.ConnectivityException,
                     tf2_ros.ExtrapolationException) as e:
-                logging.warn(e)
+                logging.warning(e)
             rate.sleep()
 
     def get_travel_distance_delta(self):
@@ -268,7 +274,7 @@ class HabitatInterfaceROSNode:
         except (tf2_ros.LookupException,
                 tf2_ros.ConnectivityException,
                 tf2_ros.ExtrapolationException) as e:
-            logging.warn(e)
+            logging.warning(e)
             return None
         pose = PoseStamped()
         pose.header.stamp = rospy.Time.now()
@@ -291,7 +297,7 @@ class HabitatInterfaceROSNode:
         except (tf2_ros.LookupException,
                 tf2_ros.ConnectivityException,
                 tf2_ros.ExtrapolationException) as e:
-            logging.warn(e)
+            logging.warning(e)
             return None
         return pose
 
@@ -327,7 +333,7 @@ class HabitatInterfaceROSNode:
             except (tf2_ros.LookupException,
                     tf2_ros.ConnectivityException,
                     tf2_ros.ExtrapolationException) as e:
-                logging.warn(e)
+                logging.warning(e)
         return []
 
     @property
@@ -373,7 +379,7 @@ class HabitatInterfaceROSNode:
         except (tf2_ros.LookupException,
                 tf2_ros.ConnectivityException,
                 tf2_ros.ExtrapolationException) as e:
-            logging.warn(e)
+            logging.warning(e)
             return False
         return self._move_to(goal)
 
@@ -396,10 +402,10 @@ class HabitatInterfaceROSNode:
     def seed_rng(self, seed):
         self.rng = np.random.default_rng(seed)
 
-    def set_ref_tf(start_pos, start_rot):
+    def set_ref_tf(self, start_pos, start_rot):
         rot = (
             np.quaternion(start_rot[3], *start_rot[:3])
-            * np.quaternion(-0.5, -0.5, 0.5, 0.5)
+            * np.quaternion(0.5, -0.5, 0.5, 0.5)
         )
         self.ref_tf = TransformStamped()
         self.ref_tf.header.frame_id = self.cfg.TF_HABITAT_REF_FRAME

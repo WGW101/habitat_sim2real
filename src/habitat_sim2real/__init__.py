@@ -37,8 +37,8 @@ except ImportError as e:
 
 try:
     from .sims.ros.rosrobot_sim import ROSRobot
-    from .sims.ros.ros_mngr import ROSManager
-    from .sims.ros.ros_habsim_sim import ROSHabitatSim
+#    from .sims.ros.ros_mngr import ROSManager
+#    from .sims.ros.ros_habsim_sim import ROSHabitatSim
     from .sims.ros.intf_node import HabitatInterfaceROSNode
     from .envs.ros_env import ROSEnv, ROSNavRLEnv
 except ImportError as e:
