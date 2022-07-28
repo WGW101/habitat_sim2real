@@ -1,11 +1,10 @@
 from typing import List, Dict, Any
 import pickle
 import numpy as np
+from habitat.tasks.sequential_nav.sequential_nav import SequentialEpisode, SequentialSPL, SequentialNavigationTask, PPL, SequentialSuccess, Progress
 from habitat.core.registry import registry
-from habitat.tasks.sequential_nav.sequential_nav import SequentialNavigationTask, SequentialEpisode, SequentialSPL, PPL
 
-
-CACHED_DATA_ROOT = "data/cached_measurements/"
+CACHED_DATA_ROOT = "cached_measurements/"
 
 
 @registry.register_measure
@@ -39,7 +38,7 @@ class OnlineSequentialSPL(SequentialSPL):
                             *args: Any, **kwargs: Any) -> None:
         pos = np.array(self._sim.get_agent_state().position)
         if hasattr(self._sim, "intf_node"):
-            self._last_delta = self._sim.intf_node.get_travelled_distance_delta()
+            self._last_delta = self._sim.intf_node.get_travel_distance_delta()
             self._cumul_dist += self._last_delta
         elif self._last_step_index == episode._current_step_index \
                 and np.allclose(self._last_pos, pos):
@@ -82,10 +81,10 @@ class OnlinePPL(PPL):
         pos = np.array(self._sim.get_agent_state().position)
         idx = episode._current_step_index
         if hasattr(self._sim, "intf_node"):
-            if SequentialSPL.cls_uuid in task.measurements.measures:
-                self._cumul_dist += task.measurements.measures[SequentialSPL.uuid]._last_delta
+            if 'seq_spl' in task.measurements.measures:
+                self._cumul_dist += task.measurements.measures['seq_spl']._last_delta
             else:
-                self._cumul_dist += self._sim.intf_node.get_travelled_distance_delta()
+                self._cumul_dist += self._sim.intf_node.get_travel_distance_delta()
         elif self._last_step_index == idx and np.allclose(self._last_pos, pos):
             return
         else:
