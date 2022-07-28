@@ -170,7 +170,9 @@ class ROSRobot(Simulator):
             state = self.get_agent_state()
             if not (np.allclose(pos, state.position)
                     and quat.isclose(rot, state.rotation)):
+                self.intf_node.cancel_move_on_bump = False
                 self.set_agent_state(ag_cfg.START_POSITION, ag_cfg.START_ROTATION)
+                self.intf_node.cancel_move_on_bump = True
         self.previous_step_collided = False
         raw_obs = self.intf_node.get_raw_observations()
         return self._sensor_suite.get_observations(raw_obs)
@@ -222,9 +224,7 @@ class ROSRobot(Simulator):
     def set_agent_state(self, position, rotation, agent_id=0, reset_sensor=True):
         if isinstance(rotation, np.quaternion):
             rotation = (rotation.x, rotation.y, rotation.z, rotation.w)
-        self.intf_node.cancel_move_on_bump = False
         self.intf_node.move_to_absolute(position, rotation)
-        self.intf_node.cancel_move_on_bump = True
         self.intf_node.clear_collided()
         if reset_sensor:
             self.intf_node.set_camera_tilt(self.habitat_config.RGB_SENSOR.ORIENTATION[0])
@@ -250,8 +250,11 @@ class ROSRobot(Simulator):
         return self.intf_node.sample_free_point()
 
     def get_straight_shortest_path_points(self, src, dst):
-        dense_path = np.array(self.intf_node.get_shortest_path(src, dst))
-        return _straight_path(dense_path).tolist()
+        dense_path = self.intf_node.get_shortest_path(src, dst)
+        if dense_path:
+            return _straight_path(np.array(dense_path)).tolist()
+        else:
+            return []
 
     def seed(self, seed):
         self.intf_node.seed_rng(seed)
