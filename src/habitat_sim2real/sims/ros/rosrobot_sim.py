@@ -210,10 +210,10 @@ class ROSRobot(Simulator):
             position = s.position
         if rotation is None:
             rotation = s.rotation
-        self.set_agent_state(position, rotation, False)
+        self.set_agent_state(position, rotation, reset_sensor=False)
         raw_obs = self.intf_node.get_raw_observations()
         if not keep_agent_at_new_pose:
-            self.set_agent_state(s.position, s.rotation)
+            self.set_agent_state(s.position, s.rotation, reset_sensor=False)
         return self._sensor_suite.get_observations(raw_obs)
 
     def get_agent(self, agent_id=0):
@@ -250,7 +250,8 @@ class ROSRobot(Simulator):
         return self.intf_node.sample_free_point()
 
     def get_straight_shortest_path_points(self, src, dst):
-        return self.intf_node.get_shortest_path(src, dst)
+        dense_path = np.array(self.intf_node.get_shortest_path(src, dst))
+        return _straight_path(dense_path).tolist()
 
     def seed(self, seed):
         self.intf_node.seed_rng(seed)
@@ -262,3 +263,17 @@ class ROSRobot(Simulator):
     @property
     def forward_vector(self):
         return np.array([0.0, 0.0, -1.0])
+
+
+def _straight_path(pts, thresh=0.05):
+    v = pts[-1] - pts[0]
+    v /= np.linalg.norm(v)
+    err = np.linalg.norm(np.cross(pts - pts[0], v), axis=-1)
+    max_i = err.argmax()
+    max_err = err[max_i]
+    if max_err <= thresh:
+        return pts[[0, -1]]
+    else:
+        first = _straight_path(pts[:max_i+1])[:-1]
+        second = _straight_path(pts[max_i:])
+        return np.r_[first, second]

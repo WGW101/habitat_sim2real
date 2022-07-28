@@ -94,6 +94,7 @@ class HabitatInterfaceROSNode:
 #        self.dynamixel_sub = rospy.Subscriber(cfg.DYNAMIXEL_STATE_TOPIC,
 #                                              DynamixelStateList,
 #                                              self.on_dynamixel_state)
+        self.dynamixel_cmd_proxy = None
 
         try:
             rospy.wait_for_service(cfg.MOVE_BASE_PLAN_SERVICE, timeout)
