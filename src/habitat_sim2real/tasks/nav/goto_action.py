@@ -29,7 +29,10 @@ class GotoAction(SimulatorTaskAction):
         pos += self.start_pos
         rot = self.start_rot * np.quaternion(np.cos(0.5 * yaw), 0, np.sin(0.5 * yaw), 0)
         if self._config.MAX_DISTANCE_LIMIT > 0:
-            path = np.array(self._sim.get_straight_shortest_path_points(src, pos))
+            path = self._sim.get_straight_shortest_path_points(src, pos)
+            if not path:
+                return self._sim.get_observations_at()
+            path = np.array(path)
             remain = self._config.MAX_DISTANCE_LIMIT
             prv = path[0]
             limit = False
