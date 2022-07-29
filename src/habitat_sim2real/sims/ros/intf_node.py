@@ -22,6 +22,17 @@ from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from kobuki_msgs.msg import BumperEvent
 
 
+def DEBUG_CHECK_POSE(pose, pos, rot):
+    assert pose.pose.position.x == pos[0]
+    assert pose.pose.position.y == pos[1]
+    assert pose.pose.position.z == pos[2]
+
+    assert np.allclose(quaternion_multiply(
+        (pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w),
+        (-rot[0], -rot[1], -rot[2], rot[3]),
+    ), (0, 0, 0, 1))
+
+
 class HabitatInterfaceROSNode:
     def __init__(self, cfg):
         self.cfg = cfg
@@ -291,6 +302,8 @@ class HabitatInterfaceROSNode:
         pose.pose.orientation.y = rot[1]
         pose.pose.orientation.z = rot[2]
         pose.pose.orientation.w = rot[3]
+
+        DEBUG_CHECK_POSE(pose, pos, rot)
 
         # we transform it to ref_frame
         try:
