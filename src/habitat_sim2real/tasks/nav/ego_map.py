@@ -11,6 +11,16 @@ from habitat.config.default import Config
 from habitat.utils.visualizations import maps, fog_of_war
 
 
+import rospy
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
+def DEBUG_PUBLISH_MAP_IMG(ego_map):
+    rospy.Publisher("~ego_map", Image, queue_size=2, latch=True).publish(
+        CvBridge().cv2_to_imgmsg(ego_map)
+    )
+
+
+
 @registry.register_sensor
 class EgoMapSensor(Sensor):
     _sim: Simulator
@@ -73,4 +83,6 @@ class EgoMapSensor(Sensor):
         res = int(2 * d / mppx)
         rot[0, 2] += 0.5 * res - j
         rot[1, 2] += 0.5 * res - i
-        return cv2.warpAffine(topdown_map, rot, (res, res), borderValue=maps.MAP_INVALID_POINT)
+        ego_map = cv2.warpAffine(topdown_map, rot, (res, res), borderValue=maps.MAP_INVALID_POINT)
+        DEBUG_PUBLISH_MAP_IMG(ego_map)
+        return ego_map
