@@ -42,14 +42,14 @@ class EgoMapSensor(Sensor):
             self._topdown_map = maps.get_topdown_map_from_sim(
                 self._sim, draw_border=False, meters_per_pixel=mppx
             )
-            self._fog = np.zeros(self._topdown_map.shape, dtype=np.bool_)
-
             for goal in episode.goals:
                 i, j = maps.to_grid(goal.position[2], goal.position[0],
                                     self._topdown_map.shape, self._sim)
                 if self._topdown_map[i, j] != maps.MAP_INVALID_POINT:
                     cv2.circle(self._topdown_map, (j, i), mrk,
                                maps.MAP_TARGET_POINT_INDICATOR, -1)
+        if self._last_ep_id != episode.episode_id:
+            self._fog = np.zeros(self._topdown_map.shape, dtype=np.bool_)
             self._last_ep_id = episode.episode_id
 
         s = self._sim.get_agent_state()
@@ -57,11 +57,15 @@ class EgoMapSensor(Sensor):
         a = 2 * np.arctan(s.rotation.y / s.rotation.w)
         d = self.config.VISIBILITY
         topdown_map = self._topdown_map.copy()
-        if not self.config.ONLINE_MAP and self.config.FOG_OF_WAR:
-            fov = self.config.HFOV
-            self._fog = fog_of_war.reveal_fog_of_war(self._topdown_map, self._fog,
-                                                     np.array((i, j)), np.pi + a,
-                                                     fov, d / mppx)
+        if self.config.FOG_OF_WAR:
+            self._fog = fog_of_war.reveal_fog_of_war(
+                self._topdown_map,
+                self._fog,
+                np.array((i, j)),
+                np.pi + a,
+                self.config.HFOV,
+                d / mppx
+            )
             topdown_map[self._fog == 0] = maps.MAP_INVALID_POINT
 
         h, w = topdown_map.shape
