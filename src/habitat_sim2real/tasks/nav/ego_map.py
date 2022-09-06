@@ -16,7 +16,7 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 def DEBUG_PUBLISH_MAP_IMG(ego_map):
     rospy.Publisher("~ego_map", Image, queue_size=2, latch=True).publish(
-        CvBridge().cv2_to_imgmsg(ego_map)
+        CvBridge().cv2_to_imgmsg(maps.colorize_topdown_map(ego_map), 'rgb8')
     )
 
 
