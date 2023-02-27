@@ -247,7 +247,8 @@ class HabitatInterfaceROSNode:
         while not rospy.is_shutdown():
             if self.ref_tf is not None:
                 self.ref_tf.header.stamp = rospy.Time.now()
-                self.tf_broadcaster.sendTransform([self.ref_tf])
+                self.base_tf.header.stamp = rospy.Time.now()
+                self.tf_broadcaster.sendTransform([self.ref_tf, self.base_tf])
             try:
                 tf = self.tf_buffer.lookup_transform(self.cfg.TF_HABITAT_REF_FRAME,
                                                      self.cfg.TF_HABITAT_ROBOT_FRAME,
@@ -431,3 +432,11 @@ class HabitatInterfaceROSNode:
         self.ref_tf.transform.rotation.y = rot.y
         self.ref_tf.transform.rotation.z = rot.z
         self.ref_tf.transform.rotation.w = rot.w
+
+        self.base_tf = TransformStamped()
+        self.base_tf.header.frame_id = self.cfg.TF_ROBOT_FRAME
+        self.base_tf.child_frame_id = self.cfg.TF_HABITAT_ROBOT_FRAME
+        self.base_tf.transform.rotation.x = 0.5
+        self.base_tf.transform.rotation.y = -0.5
+        self.base_tf.transform.rotation.z = -0.5
+        self.base_tf.transform.rotation.w = 0.5

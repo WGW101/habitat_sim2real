@@ -165,6 +165,7 @@ class ROSRobot(Simulator):
         if self.habitat_config.ROS.PUBLISH_REF_TF:
             self.intf_node.set_ref_tf(ag_cfg.START_POSITION, ag_cfg.START_ROTATION)
         elif ag_cfg.IS_SET_START_STATE:
+            self.intf_node.set_ref_tf([0., 0., 0.], [0., 0., 0., 1.])
             pos = np.array(ag_cfg.START_POSITION)
             rot = quat.quaternion(ag_cfg.START_ROTATION[3], *ag_cfg.START_ROTATION[:3])
             state = self.get_agent_state()
